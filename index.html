@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#111827"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <title>부업 작업 정산</title>
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <link rel="icon" href="icons/icon.svg"/>
+  <link rel="stylesheet" href="app.css"/>
+</head>
+<body>
+<div class="app">
+  <header class="topbar"><div class="brand"><h1>부업 작업 정산</h1><p>품목 · 작업자 · 날짜별 수량 및 단가 관리</p></div><div id="status" class="status">연결 대기</div></header>
+  <nav class="tabs">
+    <button class="tab active" data-tab="work">작업입력</button>
+    <button class="tab" data-tab="daily">날짜별</button>
+    <button class="tab" data-tab="products">품목DB</button>
+    <button class="tab" data-tab="workers">작업자</button>
+  </nav>
+
+  <section id="work" class="panel active">
+    <div class="card">
+      <div class="grid">
+        <div class="field half"><label>작업 날짜</label><input id="workDate" class="input" type="date"></div>
+        <div class="field half"><label>작업자</label><select id="workerSelect" class="select"></select></div>
+        <div class="field full"><label>품목 검색</label><input id="productSearch" class="input" placeholder="예: 블루메모리"></div>
+      </div>
+      <div id="productButtons" class="product-grid"></div>
+    </div>
+    <div class="card"><h3>오늘 입력</h3><div id="draftEntries" class="entry-list"></div><div class="toolbar" style="margin-top:12px"><button id="saveEntries" class="btn violet">입력 내용 저장</button><button id="clearDraft" class="btn soft">비우기</button></div></div>
+    <div class="card"><h3>실시간 계산</h3><div class="summary"><div class="metric owner"><div class="label">① 주인장 기준금액</div><div id="draftOwnerTotal" class="value">0원</div></div><div class="metric worker"><div class="label">② 직원 지급금액</div><div id="draftWorkerTotal" class="value">0원</div></div><div class="metric report"><div class="label">③ 위쪽 보고금액 (+10%)</div><div id="draftReportTotal" class="value">0원</div></div></div><div class="notice">주인장 기준금액과 보고금액은 주인장 + 직원 전체 작업수량 기준입니다. 직원 지급금액은 직원 작업분에만 적용됩니다.</div></div>
+  </section>
+
+  <section id="daily" class="panel">
+    <div class="card"><div class="toolbar"><input id="dailyDate" class="input" type="date"><button id="loadDaily" class="btn primary">조회</button></div></div>
+    <div class="card"><div class="summary"><div class="metric owner"><div class="label">① 주인장 기준 총액</div><div id="dailyOwnerTotal" class="value">0원</div></div><div class="metric worker"><div class="label">② 직원 지급 총액</div><div id="dailyWorkerTotal" class="value">0원</div></div><div class="metric report"><div class="label">③ 보고 총액 (+10%)</div><div id="dailyReportTotal" class="value">0원</div></div></div></div>
+    <div class="card"><h3>작업자별</h3><div id="workerSummary" class="table-wrap"></div></div>
+    <div class="card"><h3>품목별</h3><div id="productSummary" class="table-wrap"></div></div>
+    <div class="card"><h3>상세내역</h3><div id="dailyDetails" class="table-wrap"></div></div>
+  </section>
+
+  <section id="products" class="panel">
+    <div class="card"><div class="toolbar"><input id="dbSearch" class="input" placeholder="품목 검색"><button id="newProduct" class="btn primary">+ 품목 추가</button></div><div id="productList" class="list" style="margin-top:12px"></div></div>
+  </section>
+
+  <section id="workers" class="panel">
+    <div class="card"><div class="toolbar"><input id="newWorkerName" class="input" placeholder="직원 이름 (예: B, 홍길동)"><button id="addWorker" class="btn primary">+ 작업자 추가</button></div><div class="notice">A(주인장)는 기본 작업자로 고정되어 삭제할 수 없습니다.</div><div id="workerList" class="list" style="margin-top:12px"></div></div>
+    <div class="card"><h3>백업</h3><p class="notice">Apps Script에서 매일 자동 백업합니다. 필요하면 지금 즉시 백업할 수도 있습니다.</p><button id="backupNow" class="btn soft">지금 백업</button></div>
+  </section>
+</div>
+
+<div id="authModal" class="modal"><div class="modal-box"><h3>앱 접속키 입력</h3><p class="notice">Apps Script 설정에서 만든 접속키를 입력하세요. 이 값은 이 기기의 브라우저에만 저장됩니다.</p><input id="accessKey" class="input" type="password" autocomplete="current-password" placeholder="접속키"><div class="modal-actions"><button id="saveAccessKey" class="btn primary">연결</button></div></div></div>
+<div id="productModal" class="modal"><div class="modal-box"><h3 id="productModalTitle">품목 추가</h3><input id="productId" type="hidden"><div class="field full"><label>품목명</label><input id="productName" class="input" placeholder="예: 블루메모리"></div><div class="field full" style="margin-top:10px"><label>주인장 기준단가</label><input id="ownerPrice" class="input" type="number" min="0" step="1" placeholder="200"></div><div class="notice" id="pricePreview"></div><div class="modal-actions"><button id="closeProductModal" class="btn soft">취소</button><button id="saveProduct" class="btn primary">저장</button></div></div></div>
+<div id="toast" class="toast"></div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
