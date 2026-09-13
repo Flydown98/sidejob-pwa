@@ -12,10 +12,14 @@
 </head>
 <body>
 <div class="app">
-  <header class="topbar"><div class="brand"><h1>부업 작업 정산</h1><p>품목 · 작업자 · 날짜별 수량 및 단가 관리</p></div><div id="status" class="status">연결 대기</div></header>
+  <header class="topbar">
+    <div class="brand"><h1>부업 작업 정산</h1><p>품목 · 작업자 · 날짜별 수량 및 단가 관리</p></div>
+    <div class="top-actions"><button id="installApp" class="btn install" hidden>앱 설치</button><div id="status" class="status">연결 대기</div></div>
+  </header>
   <nav class="tabs">
     <button class="tab active" data-tab="work">작업입력</button>
-    <button class="tab" data-tab="daily">날짜별</button>
+    <button class="tab" data-tab="monthly">월별</button>
+    <button class="tab" data-tab="daily">일별</button>
     <button class="tab" data-tab="products">품목DB</button>
     <button class="tab" data-tab="workers">작업자</button>
   </nav>
@@ -29,13 +33,57 @@
       </div>
       <div id="productButtons" class="product-grid"></div>
     </div>
-    <div class="card"><h3>오늘 입력</h3><div id="draftEntries" class="entry-list"></div><div class="toolbar" style="margin-top:12px"><button id="saveEntries" class="btn violet">입력 내용 저장</button><button id="clearDraft" class="btn soft">비우기</button></div></div>
-    <div class="card"><h3>실시간 계산</h3><div class="summary"><div class="metric owner"><div class="label">① 주인장 기준금액</div><div id="draftOwnerTotal" class="value">0원</div></div><div class="metric worker"><div class="label">② 직원 지급금액</div><div id="draftWorkerTotal" class="value">0원</div></div><div class="metric report"><div class="label">③ 위쪽 보고금액 (+10%)</div><div id="draftReportTotal" class="value">0원</div></div></div><div class="notice">주인장 기준금액과 보고금액은 주인장 + 직원 전체 작업수량 기준입니다. 직원 지급금액은 직원 작업분에만 적용됩니다.</div></div>
+    <div class="card"><h3>입력 중인 작업</h3><div id="draftEntries" class="entry-list"></div><div class="toolbar" style="margin-top:12px"><button id="saveEntries" class="btn violet">입력 내용 저장</button><button id="clearDraft" class="btn soft">비우기</button></div></div>
+    <div class="card">
+      <h3>실시간 계산</h3>
+      <div class="summary">
+        <div class="metric owner"><div class="label">① 전체 기준금액</div><div id="draftOwnerTotal" class="value">0원</div></div>
+        <div class="metric worker"><div class="label">② 직원 지급금액</div><div id="draftWorkerTotal" class="value">0원</div></div>
+        <div class="metric report"><div class="label">③ 위쪽 보고금액</div><div id="draftReportTotal" class="value">0원</div></div>
+      </div>
+      <div class="notice"><b>A(주인장) 작업에는 10% 수수료가 붙지 않습니다.</b> 직원 작업에만 기준단가 +10%를 적용해 보고금액을 계산합니다.</div>
+    </div>
+  </section>
+
+  <section id="monthly" class="panel">
+    <div class="card">
+      <div class="monthly-head">
+        <div><h3>월별 정산</h3><p class="notice no-top">월 전체를 보거나, 한 사람만 선택해서 같은 달을 확인할 수 있습니다.</p></div>
+        <div class="toolbar month-toolbar">
+          <input id="monthlyMonth" class="input" type="month">
+          <select id="monthlyWorker" class="select worker-filter"><option value="">전체 작업자</option></select>
+          <button id="loadMonthly" class="btn violet">조회</button>
+        </div>
+      </div>
+      <div class="summary monthly-summary">
+        <div class="metric qty"><div class="label">총 작업수량</div><div id="monthlyQty" class="value">0개</div></div>
+        <div class="metric owner"><div class="label">① 전체 기준금액</div><div id="monthlyOwnerTotal" class="value">0원</div></div>
+        <div class="metric worker"><div class="label">② 직원 지급금액</div><div id="monthlyWorkerTotal" class="value">0원</div></div>
+        <div class="metric report"><div class="label">③ 보고금액</div><div id="monthlyReportTotal" class="value">0원</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="calendar-title"><h3 id="calendarTitle">월간 달력</h3><span class="notice no-top">날짜를 누르면 그날 상세내역으로 이동합니다.</span></div>
+      <div class="calendar-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+      <div id="monthlyCalendar" class="calendar-grid"></div>
+    </div>
+
+    <div class="card"><h3>이 달의 작업자별 합계</h3><div id="monthlyByWorker" class="person-cards"></div></div>
+    <div class="card"><h3>날짜별 합계</h3><div id="monthlyByDate" class="table-wrap"></div></div>
+    <div class="card"><h3>월 상세내역</h3><div id="monthlyDetails" class="table-wrap"></div></div>
   </section>
 
   <section id="daily" class="panel">
-    <div class="card"><div class="toolbar"><input id="dailyDate" class="input" type="date"><button id="loadDaily" class="btn primary">조회</button></div></div>
-    <div class="card"><div class="summary"><div class="metric owner"><div class="label">① 주인장 기준 총액</div><div id="dailyOwnerTotal" class="value">0원</div></div><div class="metric worker"><div class="label">② 직원 지급 총액</div><div id="dailyWorkerTotal" class="value">0원</div></div><div class="metric report"><div class="label">③ 보고 총액 (+10%)</div><div id="dailyReportTotal" class="value">0원</div></div></div></div>
+    <div class="card">
+      <h3>일별 조회</h3>
+      <div class="toolbar">
+        <input id="dailyDate" class="input" type="date">
+        <select id="dailyWorker" class="select worker-filter"><option value="">전체 작업자</option></select>
+        <button id="loadDaily" class="btn primary">조회</button>
+      </div>
+    </div>
+    <div class="card"><div class="summary"><div class="metric owner"><div class="label">① 전체 기준금액</div><div id="dailyOwnerTotal" class="value">0원</div></div><div class="metric worker"><div class="label">② 직원 지급금액</div><div id="dailyWorkerTotal" class="value">0원</div></div><div class="metric report"><div class="label">③ 보고금액</div><div id="dailyReportTotal" class="value">0원</div></div></div></div>
     <div class="card"><h3>작업자별</h3><div id="workerSummary" class="table-wrap"></div></div>
     <div class="card"><h3>품목별</h3><div id="productSummary" class="table-wrap"></div></div>
     <div class="card"><h3>상세내역</h3><div id="dailyDetails" class="table-wrap"></div></div>
