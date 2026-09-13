@@ -1,18 +1,14 @@
 {
-  "id": "./",
   "name": "부업 작업 정산",
   "short_name": "부업정산",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "any",
   "background_color": "#f7f8fb",
   "theme_color": "#111827",
   "lang": "ko-KR",
-  "description": "날짜·월·작업자·품목별 부업 수량 및 단가 정산 PWA",
+  "description": "날짜·작업자·품목별 부업 수량 및 단가 정산 PWA",
   "icons": [
-    {"src":"icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"},
-    {"src":"icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
+    {"src":"icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
   ]
 }

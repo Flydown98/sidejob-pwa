@@ -12,7 +12,7 @@
 </head>
 <body>
 <div class="app">
-  <header class="topbar"><div class="brand"><h1>부업 작업 정산</h1><p>품목 · 작업자 · 날짜별 수량 및 단가 관리</p></div><div class="top-actions"><button id="installApp" class="btn install" hidden>앱 설치</button><div id="status" class="status">연결 대기</div></div></header>
+  <header class="topbar"><div class="brand"><h1>부업 작업 정산</h1><p>품목 · 작업자 · 날짜별 수량 및 단가 관리</p></div><div id="status" class="status">연결 대기</div></header>
   <nav class="tabs">
     <button class="tab active" data-tab="work">작업입력</button>
     <button class="tab" data-tab="daily">날짜별</button>
@@ -34,16 +34,8 @@
   </section>
 
   <section id="daily" class="panel">
-    <div class="card">
-      <h3>날짜별 조회</h3>
-      <div class="toolbar"><input id="dailyDate" class="input" type="date"><button id="loadDaily" class="btn primary">조회</button></div>
-    </div>
+    <div class="card"><div class="toolbar"><input id="dailyDate" class="input" type="date"><button id="loadDaily" class="btn primary">조회</button></div></div>
     <div class="card"><div class="summary"><div class="metric owner"><div class="label">① 주인장 기준 총액</div><div id="dailyOwnerTotal" class="value">0원</div></div><div class="metric worker"><div class="label">② 직원 지급 총액</div><div id="dailyWorkerTotal" class="value">0원</div></div><div class="metric report"><div class="label">③ 보고 총액 (+10%)</div><div id="dailyReportTotal" class="value">0원</div></div></div></div>
-    <div class="card monthly-card">
-      <div class="monthly-head"><div><h3>월간 총합</h3><p class="notice no-top">선택한 달의 전체 작업을 자동 합산합니다.</p></div><div class="toolbar month-toolbar"><input id="monthlyMonth" class="input" type="month"><button id="loadMonthly" class="btn violet">월 조회</button></div></div>
-      <div class="summary monthly-summary"><div class="metric qty"><div class="label">총 작업수량</div><div id="monthlyQty" class="value">0개</div></div><div class="metric owner"><div class="label">① 주인장 기준 총액</div><div id="monthlyOwnerTotal" class="value">0원</div></div><div class="metric worker"><div class="label">② 직원 지급 총액</div><div id="monthlyWorkerTotal" class="value">0원</div></div><div class="metric report"><div class="label">③ 보고 총액 (+10%)</div><div id="monthlyReportTotal" class="value">0원</div></div></div>
-      <div id="monthlyByDate" class="table-wrap" style="margin-top:14px"></div>
-    </div>
     <div class="card"><h3>작업자별</h3><div id="workerSummary" class="table-wrap"></div></div>
     <div class="card"><h3>품목별</h3><div id="productSummary" class="table-wrap"></div></div>
     <div class="card"><h3>상세내역</h3><div id="dailyDetails" class="table-wrap"></div></div>
