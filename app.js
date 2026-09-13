@@ -83,7 +83,7 @@ async function loadDaily(){
     $('#dailyOwnerTotal').textContent=won(d.totals.ownerTotal);$('#dailyWorkerTotal').textContent=won(d.totals.workerPayoutTotal);$('#dailyReportTotal').textContent=won(d.totals.reportTotal);
     $('#workerSummary').innerHTML=table(['작업자','구분','수량','기준금액','직원지급','보고금액'],d.byWorker.map(x=>[x.workerName,x.role==='owner'?'주인장':'직원',x.qty,won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]));
     $('#productSummary').innerHTML=table(['품목','수량','기준단가','직원단가','직원 보고단가','기준금액','직원지급','보고금액'],d.byProduct.map(x=>[x.productName,x.qty,won(x.ownerPrice),won(x.workerPrice),won(x.reportPrice),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]));
-    $('#dailyDetails').innerHTML=table(['시간','작업자','품목','수량','적용 지급단가','지급금액','보고금액'],d.entries.map(x=>[x.createdAtLabel,x.workerName,x.productName,x.qty,won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal)]));
+    $('#dailyDetails').innerHTML=table(['시간','작업자','품목','수량','적용 지급단가','지급금액','보고금액','관리'],d.entries.map(x=>[x.createdAtLabel,x.workerName,x.productName,x.qty,won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal),`<button class="btn danger small" data-delete-entry="${esc(x.id)}" data-delete-context="daily">삭제</button>`]));
     toast(`${date} 조회 완료`);
   }catch(e){toast(e.message)}
 }
@@ -96,7 +96,7 @@ async function loadMonthly(){
     renderCalendar(month,d.byDate||[]);
     renderMonthlyPeople(d.byWorker||[],workerId);
     $('#monthlyByDate').innerHTML=table(['날짜','수량','기준금액','직원지급','보고금액'],(d.byDate||[]).map(x=>[x.date,`${Number(x.qty).toLocaleString('ko-KR')}개`,won(x.ownerTotal),won(x.workerPayoutTotal),won(x.reportTotal)]));
-    $('#monthlyDetails').innerHTML=table(['날짜','작업자','품목','수량','지급단가','지급금액','보고금액'],(d.entries||[]).map(x=>[x.date,x.workerName,x.productName,x.qty,won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal)]));
+    $('#monthlyDetails').innerHTML=table(['날짜','작업자','품목','수량','지급단가','지급금액','보고금액','관리'],(d.entries||[]).map(x=>[x.date,x.workerName,x.productName,x.qty,won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal),`<button class="btn danger small" data-delete-entry="${esc(x.id)}" data-delete-context="monthly">삭제</button>`]));
     const selected=state.workers.find(w=>w.id===workerId);$('#calendarTitle').textContent=`${month.replace('-','년 ')}월 ${selected?`· ${selected.name}`:'· 전체'}`;
     toast(`${month} 조회 완료`);
   }catch(e){toast(e.message)}
@@ -131,6 +131,16 @@ function bind(){
     const ep=e.target.closest('[data-edit-product]');if(ep)return openProduct(state.products.find(x=>x.id===ep.dataset.editProduct));
     const dp=e.target.closest('[data-delete-product]');if(dp&&confirm('이 품목을 삭제(비활성화)할까요? 기존 작업내역은 유지됩니다.')){try{await api('deleteProduct',{id:dp.dataset.deleteProduct});await refreshAll();toast('품목 삭제 완료')}catch(err){toast(err.message)}return}
     const dw=e.target.closest('[data-delete-worker]');if(dw&&confirm('이 작업자를 삭제(비활성화)할까요? 기존 작업내역은 유지됩니다.')){try{await api('deleteWorker',{id:dw.dataset.deleteWorker});await refreshAll();toast('작업자 삭제 완료')}catch(err){toast(err.message)}return}
+    const de=e.target.closest('[data-delete-entry]');if(de){
+      if(!confirm('이 작업내역 1건을 삭제할까요?\n삭제 후 합계도 자동으로 다시 계산됩니다.'))return;
+      try{
+        de.disabled=true;
+        await api('deleteEntry',{id:de.dataset.deleteEntry});
+        toast('작업내역 삭제 완료');
+        if(de.dataset.deleteContext==='monthly')await loadMonthly();else await loadDaily();
+      }catch(err){toast(err.message)}finally{de.disabled=false}
+      return;
+    }
   });
   document.addEventListener('change',e=>{const i=e.target.dataset.qtyInput;if(i!==undefined){state.draft[Number(i)].qty=Math.max(1,Number(e.target.value)||1);renderDraft()}});
   $('#saveEntries').onclick=async()=>{if(!state.draft.length)return toast('저장할 작업이 없습니다.');try{await api('addEntries',{entries:state.draft});state.draft=[];renderDraft();toast('작업내역 저장 완료')}catch(e){toast(e.message)}};
