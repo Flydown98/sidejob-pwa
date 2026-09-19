@@ -52,7 +52,7 @@
         <div class="toolbar month-toolbar">
           <input id="monthlyMonth" class="input" type="month">
           <select id="monthlyWorker" class="select worker-filter"><option value="">전체 작업자</option></select>
-          <button id="loadMonthly" class="btn violet">조회</button>
+          <button id="loadMonthly" class="btn violet">조회</button><button id="printMonthly" class="btn primary">전체 인쇄</button>
         </div>
       </div>
       <div class="summary monthly-summary">
@@ -71,7 +71,7 @@
 
     <div class="card"><h3>이 달의 작업자별 합계</h3><div id="monthlyByWorker" class="person-cards"></div></div>
     <div class="card"><h3>날짜별 합계</h3><div id="monthlyByDate" class="table-wrap"></div></div>
-    <div class="card"><h3>월 상세내역</h3><div id="monthlyDetails" class="table-wrap"></div></div>
+    <div class="card"><div class="section-head"><div><h3>월 상세내역</h3><p class="notice no-top">잘못 입력한 건은 수정에서 날짜·품목·수량을 바로 변경할 수 있습니다.</p></div></div><div id="monthlyDetails" class="table-wrap"></div></div>
   </section>
 
   <section id="daily" class="panel">
@@ -86,7 +86,7 @@
     <div class="card"><div class="summary"><div class="metric owner"><div class="label">① 전체 기준금액</div><div id="dailyOwnerTotal" class="value">0원</div></div><div class="metric worker"><div class="label">② 직원 지급금액</div><div id="dailyWorkerTotal" class="value">0원</div></div><div class="metric report"><div class="label">③ 보고금액</div><div id="dailyReportTotal" class="value">0원</div></div></div></div>
     <div class="card"><h3>작업자별</h3><div id="workerSummary" class="table-wrap"></div></div>
     <div class="card"><h3>품목별</h3><div id="productSummary" class="table-wrap"></div></div>
-    <div class="card"><h3>상세내역</h3><div id="dailyDetails" class="table-wrap"></div></div>
+    <div class="card"><div class="section-head"><div><h3>상세내역</h3><p class="notice no-top">수정 버튼으로 날짜·품목·수량을 변경할 수 있습니다.</p></div></div><div id="dailyDetails" class="table-wrap"></div></div>
   </section>
 
   <section id="products" class="panel">
@@ -101,6 +101,9 @@
 
 <div id="authModal" class="modal"><div class="modal-box"><h3>앱 접속키 입력</h3><p class="notice">Apps Script 설정에서 만든 접속키를 입력하세요. 이 값은 이 기기의 브라우저에만 저장됩니다.</p><input id="accessKey" class="input" type="password" autocomplete="current-password" placeholder="접속키"><div class="modal-actions"><button id="saveAccessKey" class="btn primary">연결</button></div></div></div>
 <div id="productModal" class="modal"><div class="modal-box"><h3 id="productModalTitle">품목 추가</h3><input id="productId" type="hidden"><div class="field full"><label>품목명</label><input id="productName" class="input" placeholder="예: 블루메모리"></div><div class="field full" style="margin-top:10px"><label>주인장 기준단가</label><input id="ownerPrice" class="input" type="number" min="0" step="1" placeholder="200"></div><div class="notice" id="pricePreview"></div><div class="modal-actions"><button id="closeProductModal" class="btn soft">취소</button><button id="saveProduct" class="btn primary">저장</button></div></div></div>
+
+<div id="entryModal" class="modal"><div class="modal-box"><h3>작업내역 수정</h3><input id="entryId" type="hidden"><input id="entryContext" type="hidden"><div class="field full"><label>작업자</label><input id="entryWorkerName" class="input" disabled></div><div class="field full" style="margin-top:10px"><label>날짜</label><input id="entryDate" class="input" type="date"></div><div class="field full" style="margin-top:10px"><label>품목</label><select id="entryProduct" class="select"></select></div><div class="field full" style="margin-top:10px"><label>수량</label><input id="entryQty" class="input" type="number" min="1" step="1"></div><div class="notice">품목을 다른 품목으로 바꾸면 현재 품목DB의 단가가 새로 적용됩니다. 날짜나 수량만 바꾸면 기존 작업 당시 단가는 유지됩니다.</div><div class="modal-actions"><button id="closeEntryModal" class="btn soft">취소</button><button id="saveEntryEdit" class="btn primary">수정 저장</button></div></div></div>
+<div id="printArea" class="print-area"></div>
 <div id="toast" class="toast"></div>
 <script src="config.js"></script>
 <script src="app.js"></script>
