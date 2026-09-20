@@ -27,7 +27,7 @@
   <section id="work" class="panel active">
     <div class="card">
       <div class="grid">
-        <div class="field half"><label>작업 날짜</label><input id="workDate" class="input" type="date"></div>
+        <div class="field half"><label>작업 날짜</label><div class="date-status-row"><input id="workDate" class="input" type="date"><label class="check-chip"><input id="workDelivery" type="checkbox"><span>택배</span></label><label class="check-chip"><input id="workVisit" type="checkbox"><span>방문</span></label></div></div>
         <div class="field half"><label>작업자</label><select id="workerSelect" class="select"></select></div>
         <div class="field full"><label>품목 검색</label><input id="productSearch" class="input" placeholder="예: 블루메모리"></div>
       </div>
@@ -79,6 +79,8 @@
       <h3>일별 조회</h3>
       <div class="toolbar">
         <input id="dailyDate" class="input" type="date">
+        <label class="check-chip"><input id="dailyDelivery" type="checkbox"><span>택배</span></label>
+        <label class="check-chip"><input id="dailyVisit" type="checkbox"><span>방문</span></label>
         <select id="dailyWorker" class="select worker-filter"><option value="">전체 작업자</option></select>
         <button id="loadDaily" class="btn primary">조회</button>
       </div>

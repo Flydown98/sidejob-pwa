@@ -71,3 +71,13 @@
 
 /* v7 print simplification */
 @media print{.print-metrics-simple{grid-template-columns:repeat(2,1fr)!important}.print-final-metrics{grid-template-columns:repeat(3,1fr)!important}.print-final-metrics>div{min-height:105px}.print-final-metrics small{display:block;margin-top:8px;font-size:10px;color:#6b7280;font-weight:600}.print-final-metrics .grand{border:2px solid #111827}.print-final-table{margin-top:24px}}
+
+/* v9 날짜별 택배/방문 체크 */
+.date-status-row{display:grid;grid-template-columns:minmax(150px,1fr) auto auto;gap:7px;align-items:center}
+.check-chip{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:42px;padding:0 11px;border:1px solid #d1d5db;border-radius:12px;background:#fff;font-size:13px;font-weight:800;color:#374151;white-space:nowrap;cursor:pointer}
+.check-chip input{width:17px;height:17px;margin:0;accent-color:#7c3aed}
+.check-chip:has(input:checked){border-color:#8b5cf6;background:#f5f3ff;color:#6d28d9}
+.day-status-badges{display:flex;gap:3px;flex-wrap:wrap;margin:0 0 4px}
+.day-status-badges span{display:inline-flex;padding:2px 4px;border-radius:5px;background:#ede9fe;color:#6d28d9;font-size:9px;font-weight:900;line-height:1.2}
+.calendar-day.has-status{box-shadow:inset 0 0 0 1px #ddd6fe}
+@media(max-width:560px){.date-status-row{grid-template-columns:1fr auto auto}.check-chip{min-height:40px;padding:0 8px;font-size:12px}.toolbar .check-chip{flex:0 0 auto}.day-status-badges span{font-size:8px;padding:1px 3px}}

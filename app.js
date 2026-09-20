@@ -13,7 +13,7 @@ async function api(action,payload={}){
 }
 async function init(){
   $('#workDate').value=today();$('#dailyDate').value=today();$('#monthlyMonth').value=today().slice(0,7);bind();
-  if(!state.accessKey){$('#authModal').classList.add('open');return}await refreshAll();
+  if(!state.accessKey){$('#authModal').classList.add('open');return}await refreshAll();await loadWorkDayStatus();
 }
 async function refreshAll(){
   try{setStatus('동기화 중');const data=await api('bootstrap');state.products=data.products||[];state.workers=data.workers||[];renderAll();setStatus('연결됨','ok')}
@@ -37,9 +37,25 @@ function renderDraft(){
 function renderProductList(){const items=filteredProducts($('#dbSearch').value||'');$('#productList').innerHTML=items.length?items.map(p=>{const c=calcPrices(p);return `<div class="entry"><div><strong>${esc(p.name)}</strong><div class="meta">기준 ${won(c.owner)} · 직원 ${won(c.worker)} · 보고 ${won(c.report)}</div></div><div></div><div></div><div><button class="btn soft small" data-edit-product="${esc(p.id)}">수정</button> <button class="btn danger small" data-delete-product="${esc(p.id)}">삭제</button></div></div>`}).join(''):'<div class="empty">등록된 품목이 없습니다.</div>'}
 function renderWorkerList(){const items=state.workers.filter(w=>w.active!==false);$('#workerList').innerHTML=items.map(w=>`<div class="entry"><div><strong>${esc(w.name)}</strong><div class="meta">${w.role==='owner'?'주인장 · 이름 변경 가능 · 삭제 불가':'직원 · 기준단가 - 50원 지급 · 보고 기준단가 +10%'}</div></div><div></div><div></div><div class="row-actions"><button class="btn soft small" data-edit-worker="${esc(w.id)}">이름수정</button>${w.role==='owner'?'':`<button class="btn danger small" data-delete-worker="${esc(w.id)}">삭제</button>`}</div></div>`).join('')}
 
+async function loadWorkDayStatus(){
+  const date=$('#workDate').value;if(!date)return;
+  try{const d=await api('getDailyStatus',{date});$('#workDelivery').checked=!!d.delivery;$('#workVisit').checked=!!d.visit}catch(e){toast(e.message)}
+}
+async function saveWorkDayStatus(){
+  const date=$('#workDate').value;if(!date)return;
+  try{const d=await api('saveDailyStatus',{date,delivery:$('#workDelivery').checked,visit:$('#workVisit').checked});syncStatusControls(d);toast('일자 표시 저장')}catch(e){toast(e.message)}
+}
+function syncStatusControls(d){
+  if($('#workDate').value===d.date){$('#workDelivery').checked=!!d.delivery;$('#workVisit').checked=!!d.visit}
+  if($('#dailyDate').value===d.date){$('#dailyDelivery').checked=!!d.delivery;$('#dailyVisit').checked=!!d.visit}
+}
+async function saveDailyViewStatus(){
+  const date=$('#dailyDate').value;if(!date)return;
+  try{const d=await api('saveDailyStatus',{date,delivery:$('#dailyDelivery').checked,visit:$('#dailyVisit').checked});syncStatusControls(d);toast('일자 표시 저장');if(state.monthlyData&&date.slice(0,7)===$('#monthlyMonth').value)loadMonthly()}catch(e){toast(e.message)}
+}
 async function loadDaily(){
   try{
-    const date=$('#dailyDate').value,workerId=$('#dailyWorker').value,d=await api('dailySummary',{date,workerId});state.dailyData=d;
+    const date=$('#dailyDate').value,workerId=$('#dailyWorker').value,d=await api('dailySummary',{date,workerId});state.dailyData=d;$('#dailyDelivery').checked=!!d.status?.delivery;$('#dailyVisit').checked=!!d.status?.visit;
     $('#dailyOwnerTotal').textContent=won(d.totals.ownerTotal);$('#dailyWorkerTotal').textContent=won(d.totals.workerPayoutTotal);$('#dailyReportTotal').textContent=won(d.totals.reportTotal);
     $('#workerSummary').innerHTML=table(['작업자','구분','수량','기준','직원지급','보고'],d.byWorker.map(x=>[esc(x.workerName),x.role==='owner'?'주인장':'직원',num(x.qty),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]),'worker-summary');
     $('#productSummary').innerHTML=table(['품목','수량','기준단가','직원단가','보고단가','기준금액','직원지급','보고'],d.byProduct.map(x=>[esc(x.productName),num(x.qty),won(x.ownerPrice),won(x.workerPrice),won(x.reportPrice),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]),'product-summary');
@@ -50,17 +66,17 @@ async function loadMonthly(){
   try{
     const month=$('#monthlyMonth').value,workerId=$('#monthlyWorker').value,d=await api('monthlySummary',{month,workerId});state.monthlyData=d;
     $('#monthlyQty').textContent=`${num(d.totals.qty)}개`;$('#monthlyOwnerTotal').textContent=won(d.totals.ownerTotal);$('#monthlyWorkerTotal').textContent=won(d.totals.workerPayoutTotal);$('#monthlyReportTotal').textContent=won(d.totals.reportTotal);
-    renderCalendar(month,d.byDate||[]);renderMonthlyPeople(d.byWorker||[],workerId);
+    renderCalendar(month,d.byDate||[],d.statuses||{});renderMonthlyPeople(d.byWorker||[],workerId);
     $('#monthlyByDate').innerHTML=table(['날짜','수량','기준금액','직원지급','보고'],(d.byDate||[]).map(x=>[esc(x.date),`${num(x.qty)}개`,won(x.ownerTotal),won(x.workerPayoutTotal),won(x.reportTotal)]),'monthly-date');
     $('#monthlyDetails').innerHTML=table(['날짜','작업자','품목','수량','지급단가','지급금액','보고','관리'],(d.entries||[]).map(x=>[esc(x.date),esc(x.workerName),esc(x.productName),num(x.qty),won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal),entryActions(x.id,'monthly')]),'monthly-detail');
     const selected=state.workers.find(w=>String(w.id)===String(workerId));$('#calendarTitle').textContent=`${month.replace('-','년 ')}월 ${selected?`· ${selected.name}`:'· 전체'}`;toast(`${month} 조회 완료`);
   }catch(e){toast(e.message)}
 }
 function entryActions(id,context){return `<div class="row-actions"><button class="btn soft small" data-edit-entry="${esc(id)}" data-entry-context="${context}">수정</button><button class="btn danger small" data-delete-entry="${esc(id)}" data-delete-context="${context}">삭제</button></div>`}
-function renderCalendar(month,byDate){
+function renderCalendar(month,byDate,statuses={}){
   const [y,m]=month.split('-').map(Number),first=new Date(y,m-1,1),lastDay=new Date(y,m,0).getDate(),start=first.getDay(),map=Object.fromEntries(byDate.map(x=>[x.date,x]));let html='';
   for(let i=0;i<start;i++)html+='<div class="calendar-day empty-day"></div>';
-  for(let day=1;day<=lastDay;day++){const date=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`,x=map[date];html+=`<button class="calendar-day ${x?'has-data':''}" ${x?`data-calendar-date="${date}"`:''}><div class="day-num">${day}</div>${x?`<div class="cal-line cal-qty"><strong>${num(x.qty)}개</strong></div><div class="cal-line cal-owner">기준 ${won(x.ownerTotal)}</div><div class="cal-line cal-worker">지급 ${won(x.workerPayoutTotal)}</div><div class="cal-line cal-report">보고 ${won(x.reportTotal)}</div>`:'<div class="cal-line cal-empty">-</div>'}</button>`}$('#monthlyCalendar').innerHTML=html;
+  for(let day=1;day<=lastDay;day++){const date=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`,x=map[date],st=statuses[date]||{},hasStatus=st.delivery||st.visit;html+=`<button class="calendar-day ${x?'has-data':''} ${hasStatus?'has-status':''}" data-calendar-date="${date}"><div class="day-num">${day}</div>${hasStatus?`<div class="day-status-badges">${st.delivery?'<span>택배</span>':''}${st.visit?'<span>방문</span>':''}</div>`:''}${x?`<div class="cal-line cal-qty"><strong>${num(x.qty)}개</strong></div><div class="cal-line cal-owner">기준 ${won(x.ownerTotal)}</div><div class="cal-line cal-worker">지급 ${won(x.workerPayoutTotal)}</div><div class="cal-line cal-report">보고 ${won(x.reportTotal)}</div>`:'<div class="cal-line cal-empty">-</div>'}</button>`}$('#monthlyCalendar').innerHTML=html;
 }
 function renderMonthlyPeople(items,activeId){
   if(!items.length){$('#monthlyByWorker').innerHTML='<div class="empty">내역이 없습니다.</div>';return}
@@ -140,6 +156,7 @@ function bind(){
   document.addEventListener('change',e=>{if(e.target.matches('[data-qty-input]')){const i=Number(e.target.dataset.qtyInput);state.draft[i].qty=Math.max(1,Math.floor(Number(e.target.value)||1));renderDraft()}});
   $('#saveEntries').onclick=async()=>{if(!state.draft.length)return toast('저장할 작업이 없습니다.');try{await api('addEntries',{entries:state.draft});const count=state.draft.length;state.draft=[];renderDraft();toast(`${count}건 저장 완료`)}catch(e){toast(e.message)}};
   $('#clearDraft').onclick=()=>{if(state.draft.length&&confirm('입력 중인 내용을 모두 비울까요?')){state.draft=[];renderDraft()}};
+  $('#workDate').onchange=loadWorkDayStatus;$('#workDelivery').onchange=saveWorkDayStatus;$('#workVisit').onchange=saveWorkDayStatus;$('#dailyDate').onchange=loadDaily;$('#dailyDelivery').onchange=saveDailyViewStatus;$('#dailyVisit').onchange=saveDailyViewStatus;
   $('#loadDaily').onclick=loadDaily;$('#loadMonthly').onclick=loadMonthly;$('#monthlyWorker').onchange=loadMonthly;$('#dailyWorker').onchange=loadDaily;$('#printMonthly').onclick=printMonthly;
   $('#newProduct').onclick=()=>openProduct(null);$('#closeProductModal').onclick=()=>$('#productModal').classList.remove('open');$('#closeEntryModal').onclick=()=>$('#entryModal').classList.remove('open');$('#saveEntryEdit').onclick=saveEntryEdit;
   $('#saveProduct').onclick=async()=>{const id=$('#productId').value,name=$('#productName').value.trim(),ownerPrice=Number($('#ownerPrice').value);if(!name||ownerPrice<0)return toast('품목명과 기준단가를 확인하세요.');try{await api(id?'updateProduct':'addProduct',{id,name,ownerPrice});$('#productModal').classList.remove('open');await refreshAll();toast('품목 저장 완료')}catch(e){toast(e.message)}};
