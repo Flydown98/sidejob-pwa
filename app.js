@@ -35,13 +35,13 @@ function renderDraft(){
   const t=draftTotals();$('#draftOwnerTotal').textContent=won(t.owner);$('#draftWorkerTotal').textContent=won(t.worker);$('#draftReportTotal').textContent=won(t.report);
 }
 function renderProductList(){const items=filteredProducts($('#dbSearch').value||'');$('#productList').innerHTML=items.length?items.map(p=>{const c=calcPrices(p);return `<div class="entry"><div><strong>${esc(p.name)}</strong><div class="meta">기준 ${won(c.owner)} · 직원 ${won(c.worker)} · 보고 ${won(c.report)}</div></div><div></div><div></div><div><button class="btn soft small" data-edit-product="${esc(p.id)}">수정</button> <button class="btn danger small" data-delete-product="${esc(p.id)}">삭제</button></div></div>`}).join(''):'<div class="empty">등록된 품목이 없습니다.</div>'}
-function renderWorkerList(){const items=state.workers.filter(w=>w.active!==false);$('#workerList').innerHTML=items.map(w=>`<div class="entry"><div><strong>${esc(w.name)}</strong><div class="meta">${w.role==='owner'?'주인장 · 기준단가 적용 · 수수료 없음':'직원 · 기준단가 - 50원 지급 · 보고 기준단가 +10%'}</div></div><div></div><div></div><div>${w.role==='owner'?'':`<button class="btn danger small" data-delete-worker="${esc(w.id)}">삭제</button>`}</div></div>`).join('')}
+function renderWorkerList(){const items=state.workers.filter(w=>w.active!==false);$('#workerList').innerHTML=items.map(w=>`<div class="entry"><div><strong>${esc(w.name)}</strong><div class="meta">${w.role==='owner'?'주인장 · 이름 변경 가능 · 삭제 불가':'직원 · 기준단가 - 50원 지급 · 보고 기준단가 +10%'}</div></div><div></div><div></div><div class="row-actions"><button class="btn soft small" data-edit-worker="${esc(w.id)}">이름수정</button>${w.role==='owner'?'':`<button class="btn danger small" data-delete-worker="${esc(w.id)}">삭제</button>`}</div></div>`).join('')}
 
 async function loadDaily(){
   try{
     const date=$('#dailyDate').value,workerId=$('#dailyWorker').value,d=await api('dailySummary',{date,workerId});state.dailyData=d;
     $('#dailyOwnerTotal').textContent=won(d.totals.ownerTotal);$('#dailyWorkerTotal').textContent=won(d.totals.workerPayoutTotal);$('#dailyReportTotal').textContent=won(d.totals.reportTotal);
-    $('#workerSummary').innerHTML=table(['작업자','구분','수량','기준','직원지급','보고'],d.byWorker.map(x=>[esc(x.workerName),x.role==='owner'?'A':'직원',num(x.qty),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]),'worker-summary');
+    $('#workerSummary').innerHTML=table(['작업자','구분','수량','기준','직원지급','보고'],d.byWorker.map(x=>[esc(x.workerName),x.role==='owner'?'주인장':'직원',num(x.qty),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]),'worker-summary');
     $('#productSummary').innerHTML=table(['품목','수량','기준단가','직원단가','보고단가','기준금액','직원지급','보고'],d.byProduct.map(x=>[esc(x.productName),num(x.qty),won(x.ownerPrice),won(x.workerPrice),won(x.reportPrice),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]),'product-summary');
     $('#dailyDetails').innerHTML=table(['시간','작업자','품목','수량','지급단가','지급금액','보고','관리'],d.entries.map(x=>[esc(x.createdAtLabel),esc(x.workerName),esc(x.productName),num(x.qty),won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal),entryActions(x.id,'daily')]),'daily-detail');toast(`${date} 조회 완료`);
   }catch(e){toast(e.message)}
@@ -79,22 +79,45 @@ async function saveEntryEdit(){
 }
 
 function openProduct(p){$('#productId').value=p?.id||'';$('#productName').value=p?.name||'';$('#ownerPrice').value=p?.ownerPrice||'';$('#productModalTitle').textContent=p?'품목 수정':'품목 추가';updatePricePreview();$('#productModal').classList.add('open')}
-function updatePricePreview(){const v=Number($('#ownerPrice').value)||0;$('#pricePreview').textContent=v?`A ${won(v)} (수수료 없음) / 직원 지급 ${won(Math.max(0,v-50))} / 직원 보고 ${won(Math.round(v*1.1))}`:''}
+function updatePricePreview(){const v=Number($('#ownerPrice').value)||0;$('#pricePreview').textContent=v?`주인장 ${won(v)} (수수료 없음) / 직원 지급 ${won(Math.max(0,v-50))} / 직원 보고 ${won(Math.round(v*1.1))}`:''}
 function switchTab(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$$('.panel').forEach(x=>x.classList.toggle('active',x.id===id));window.scrollTo({top:0,behavior:'smooth'})}
 
-function groupPrintEntries(entries){
-  const map=new Map();for(const x of entries){const k=[x.date,x.productId,x.payoutUnit].join('|');if(!map.has(k))map.set(k,{date:x.date,productName:x.productName,qty:0,payoutUnit:x.payoutUnit,payoutTotal:0,reportTotal:0});const g=map.get(k);g.qty+=Number(x.qty)||0;g.payoutTotal+=Number(x.payoutTotal)||0;g.reportTotal+=Number(x.reportTotal)||0}return [...map.values()].sort((a,b)=>a.date.localeCompare(b.date)||String(a.productName).localeCompare(String(b.productName),'ko'));
+function groupPrintEntries(entries, role){
+  const map=new Map();
+  for(const x of entries){
+    const unit=role==='owner'?Number(x.ownerPrice||0):Number(x.workerPrice||0);
+    const k=[x.date,x.productId,unit].join('|');
+    if(!map.has(k))map.set(k,{date:x.date,productName:x.productName,qty:0,unit,total:0});
+    const g=map.get(k);g.qty+=Number(x.qty)||0;g.total+=unit*(Number(x.qty)||0);
+  }
+  return [...map.values()].sort((a,b)=>a.date.localeCompare(b.date)||String(a.productName).localeCompare(String(b.productName),'ko'));
 }
 async function printMonthly(){
   const month=$('#monthlyMonth').value;if(!month)return toast('인쇄할 월을 선택하세요.');
   try{
-    toast('인쇄자료 준비 중');const data=await api('monthlySummary',{month,workerId:''}),workers=state.workers.filter(w=>w.active!==false).sort((a,b)=>(a.role==='owner'?-1:b.role==='owner'?1:String(a.name).localeCompare(String(b.name),'ko'))),summaryMap=Object.fromEntries((data.byWorker||[]).map(x=>[String(x.workerId),x]));
+    toast('인쇄자료 준비 중');
+    const data=await api('monthlySummary',{month,workerId:''});
+    const workers=state.workers.filter(w=>w.active!==false).sort((a,b)=>(a.role==='owner'?-1:b.role==='owner'?1:String(a.name).localeCompare(String(b.name),'ko')));
+    const summaryMap=Object.fromEntries((data.byWorker||[]).map(x=>[String(x.workerId),x]));
     let pages='';
-    for(const w of workers){const entries=(data.entries||[]).filter(x=>String(x.workerId)===String(w.id)),sum=summaryMap[String(w.id)]||{qty:0,ownerTotal:0,workerPayout:0,reportTotal:0},receive=w.role==='owner'?Number(sum.ownerTotal||0):Number(sum.workerPayout||0),grouped=groupPrintEntries(entries);
-      pages+=`<section class="print-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 작업 정산</h1><p>${esc(w.name)} · ${w.role==='owner'?'주인장(A)':'직원'}</p></div><div class="print-badge">개인 정산</div></div><div class="print-metrics"><div><span>총 수량</span><b>${num(sum.qty)}개</b></div><div><span>받을 금액</span><b>${won(receive)}</b></div><div><span>기준금액</span><b>${won(sum.ownerTotal)}</b></div><div><span>보고금액</span><b>${won(sum.reportTotal)}</b></div></div><table class="print-table"><thead><tr><th>날짜</th><th>품목</th><th>수량</th><th>적용단가</th><th>받을 금액</th></tr></thead><tbody>${grouped.length?grouped.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.productName)}</td><td>${num(x.qty)}개</td><td>${won(x.payoutUnit)}</td><td>${won(x.payoutTotal)}</td></tr>`).join(''):'<tr><td colspan="5" class="print-empty">이 달의 작업내역이 없습니다.</td></tr>'}</tbody><tfoot><tr><td colspan="2">합계</td><td>${num(sum.qty)}개</td><td></td><td>${won(receive)}</td></tr></tfoot></table><div class="print-note">※ A(주인장)는 기준단가 그대로 계산하며 10% 수수료를 붙이지 않습니다. 직원은 기준단가 - 50원을 지급금액으로 계산합니다.</div></section>`;
+
+    // 개인별 페이지: 주인장은 현재 주인장 단가, 직원은 현재 직원단가(주인장단가-50원)만 표시한다.
+    // 수수료/보고단가/주인장 기준 총액 등은 개인 페이지에서 노출하지 않는다.
+    for(const w of workers){
+      const entries=(data.entries||[]).filter(x=>String(x.workerId)===String(w.id));
+      const sum=summaryMap[String(w.id)]||{qty:0,ownerTotal:0,workerPayout:0,reportTotal:0};
+      const receive=w.role==='owner'?Number(sum.ownerTotal||0):Number(sum.workerPayout||0);
+      const grouped=groupPrintEntries(entries,w.role);
+      pages+=`<section class="print-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 작업 정산</h1><p>${esc(w.name)} · ${w.role==='owner'?'주인장':'직원'}</p></div><div class="print-badge">개인 정산</div></div><div class="print-metrics print-metrics-simple"><div><span>총 작업수량</span><b>${num(sum.qty)}개</b></div><div><span>월 합계</span><b>${won(receive)}</b></div></div><table class="print-table"><thead><tr><th>날짜</th><th>품목</th><th>수량</th><th>${w.role==='owner'?'적용단가':'직원단가'}</th><th>금액</th></tr></thead><tbody>${grouped.length?grouped.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.productName)}</td><td>${num(x.qty)}개</td><td>${won(x.unit)}</td><td>${won(x.total)}</td></tr>`).join(''):'<tr><td colspan="5" class="print-empty">이 달의 작업내역이 없습니다.</td></tr>'}</tbody><tfoot><tr><td colspan="2">합계</td><td>${num(sum.qty)}개</td><td></td><td>${won(receive)}</td></tr></tfoot></table>${w.role==='owner'?'':'<div class="print-note">※ 직원 정산표는 현재 품목DB 단가에서 50원을 뺀 직원단가만 적용합니다.</div>'}</section>`;
     }
-    const combinedPayout=(data.byWorker||[]).reduce((s,x)=>s+(x.role==='owner'?Number(x.ownerTotal||0):Number(x.workerPayout||0)),0);
-    pages+=`<section class="print-page print-total-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 전체 총계</h1><p>작업자 전체 월 정산</p></div><div class="print-badge total">전체 총계</div></div><div class="print-metrics"><div><span>총 수량</span><b>${num(data.totals.qty)}개</b></div><div><span>실제 배분 총액</span><b>${won(combinedPayout)}</b></div><div><span>전체 기준금액</span><b>${won(data.totals.ownerTotal)}</b></div><div><span>위쪽 보고금액</span><b>${won(data.totals.reportTotal)}</b></div></div><table class="print-table"><thead><tr><th>이름</th><th>구분</th><th>수량</th><th>받을 금액</th><th>보고금액</th></tr></thead><tbody>${workers.map(w=>{const x=summaryMap[String(w.id)]||{qty:0,ownerTotal:0,workerPayout:0,reportTotal:0},receive=w.role==='owner'?x.ownerTotal:x.workerPayout;return `<tr><td>${esc(w.name)}</td><td>${w.role==='owner'?'A':'직원'}</td><td>${num(x.qty)}개</td><td>${won(receive)}</td><td>${won(x.reportTotal)}</td></tr>`}).join('')}</tbody><tfoot><tr><td colspan="2">전체 합계</td><td>${num(data.totals.qty)}개</td><td>${won(combinedPayout)}</td><td>${won(data.totals.reportTotal)}</td></tr></tfoot></table></section>`;
+
+    // 마지막 전체 총계: 주인장 직접 작업금액 + 직원 작업의 보고금액(현재 주인장단가×1.1)만 계산한다.
+    const ownerSum=(data.byWorker||[]).filter(x=>x.role==='owner').reduce((s,x)=>s+Number(x.ownerTotal||0),0);
+    const ownerQty=(data.byWorker||[]).filter(x=>x.role==='owner').reduce((s,x)=>s+Number(x.qty||0),0);
+    const staffReport=(data.byWorker||[]).filter(x=>x.role!=='owner').reduce((s,x)=>s+Number(x.reportTotal||0),0);
+    const staffQty=(data.byWorker||[]).filter(x=>x.role!=='owner').reduce((s,x)=>s+Number(x.qty||0),0);
+    const grand=ownerSum+staffReport;
+    pages+=`<section class="print-page print-total-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 전체 총계</h1><p>최종 보고용 정산</p></div><div class="print-badge total">전체 총계</div></div><div class="print-metrics print-final-metrics"><div><span>1. 주인장 총금액</span><b>${won(ownerSum)}</b><small>주인장 작업 ${num(ownerQty)}개 · 수수료 없음</small></div><div><span>2. 직원들 총금액</span><b>${won(staffReport)}</b><small>직원 작업 ${num(staffQty)}개 · 현재 주인장단가 × 1.1</small></div><div class="grand"><span>3. 전체 최종 합계</span><b>${won(grand)}</b><small>주인장 총금액 + 직원들 수수료 포함 총금액</small></div></div><table class="print-table print-final-table"><thead><tr><th>구분</th><th>수량</th><th>계산 기준</th><th>금액</th></tr></thead><tbody><tr><td>주인장</td><td>${num(ownerQty)}개</td><td>현재 주인장단가 · 수수료 없음</td><td>${won(ownerSum)}</td></tr><tr><td>직원 전체</td><td>${num(staffQty)}개</td><td>현재 주인장단가 × 1.1</td><td>${won(staffReport)}</td></tr></tbody><tfoot><tr><td>최종 합계</td><td>${num(ownerQty+staffQty)}개</td><td>전체</td><td>${won(grand)}</td></tr></tfoot></table></section>`;
     $('#printArea').innerHTML=pages;document.body.classList.add('printing');setTimeout(()=>window.print(),100);
   }catch(e){toast(e.message)}
 }
@@ -111,6 +134,7 @@ function bind(){
     const de=e.target.closest('[data-delete-entry]');if(de){if(!confirm('이 작업내역을 삭제할까요? 합계에서도 제외됩니다.'))return;try{await api('deleteEntry',{id:de.dataset.deleteEntry});toast('삭제 완료');if(de.dataset.deleteContext==='daily')await loadDaily();else await loadMonthly()}catch(err){toast(err.message)}return}
     const ep=e.target.closest('[data-edit-product]');if(ep)return openProduct(state.products.find(x=>String(x.id)===String(ep.dataset.editProduct)));
     const dp=e.target.closest('[data-delete-product]');if(dp&&confirm('이 품목을 삭제(비활성화)할까요? 기존 작업내역은 유지됩니다.')){try{await api('deleteProduct',{id:dp.dataset.deleteProduct});await refreshAll();toast('품목 삭제 완료')}catch(err){toast(err.message)}return}
+    const ew=e.target.closest('[data-edit-worker]');if(ew){const w=state.workers.find(x=>String(x.id)===String(ew.dataset.editWorker));if(!w)return toast('작업자를 찾을 수 없습니다.');const name=prompt(`${w.role==='owner'?'주인장':'작업자'} 이름을 변경하세요.`,w.name);if(name===null)return;const trimmed=name.trim();if(!trimmed)return toast('이름을 입력하세요.');try{await api('updateWorker',{id:w.id,name:trimmed});await refreshAll();toast('이름 수정 완료')}catch(err){toast(err.message)}return}
     const dw=e.target.closest('[data-delete-worker]');if(dw&&confirm('이 작업자를 삭제(비활성화)할까요? 기존 작업내역은 유지됩니다.')){try{await api('deleteWorker',{id:dw.dataset.deleteWorker});await refreshAll();toast('작업자 삭제 완료')}catch(err){toast(err.message)}return}
   });
   document.addEventListener('change',e=>{if(e.target.matches('[data-qty-input]')){const i=Number(e.target.dataset.qtyInput);state.draft[i].qty=Math.max(1,Math.floor(Number(e.target.value)||1));renderDraft()}});
