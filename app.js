@@ -140,8 +140,8 @@ async function printMonthly(fullRate=false){
     const grand=ownerSum+staffReport;
     const ownerName=ownerRows[0]?.workerName||state.workers.find(w=>w.role==='owner')?.name||'주인장';
     const detailRows=[
-      `<tr><td>${esc(ownerName)} <small>(주인장)</small></td><td>${num(ownerQty)}개</td><td>현재 주인장단가 · 수수료 없음</td><td>${won(ownerSum)}</td></tr>`,
-      ...staffRows.map(x=>`<tr><td>${esc(x.workerName)}</td><td>${num(x.qty)}개</td><td>현재 주인장단가 × 1.1</td><td>${won(x.reportTotal)}</td></tr>`)
+      `<tr><td>${esc(ownerName)} <small>(주인장)</small></td><td>${num(ownerQty)}개</td><td>-</td><td>${won(ownerSum)}</td></tr>`,
+      ...staffRows.map(x=>`<tr><td>${esc(x.workerName)}</td><td>${num(x.qty)}개</td><td>수수료 포함(10%)</td><td>${won(x.reportTotal)}</td></tr>`)
     ].join('');
     pages+=`<section class="print-page print-total-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 전체 총계</h1><p>최종 보고용 정산 · 직원별 합계 포함</p></div><div class="print-badge total">전체 총계</div></div><div class="print-metrics print-final-metrics"><div><span>1. 주인장 총금액</span><b>${won(ownerSum)}</b><small>주인장 작업 ${num(ownerQty)}개 · 수수료 없음</small></div><div><span>2. 직원들 총금액</span><b>${won(staffReport)}</b><small>직원 작업 ${num(staffQty)}개 · 현재 주인장단가 × 1.1</small></div><div class="grand"><span>3. 전체 최종 합계</span><b>${won(grand)}</b><small>주인장 총금액 + 직원별 수수료 포함 총금액</small></div></div><table class="print-table print-final-table"><thead><tr><th>작업자</th><th>수량</th><th>계산 기준</th><th>금액</th></tr></thead><tbody>${detailRows}</tbody><tfoot><tr><td>직원 합계</td><td>${num(staffQty)}개</td><td>직원 전체</td><td>${won(staffReport)}</td></tr><tr><td>최종 합계</td><td>${num(ownerQty+staffQty)}개</td><td>주인장 + 직원 전체</td><td>${won(grand)}</td></tr></tfoot></table></section>`;
     $('#printArea').innerHTML=pages;document.body.classList.add('printing');setTimeout(()=>window.print(),100);
