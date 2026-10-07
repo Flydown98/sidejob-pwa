@@ -98,20 +98,20 @@ function openProduct(p){$('#productId').value=p?.id||'';$('#productName').value=
 function updatePricePreview(){const v=Number($('#ownerPrice').value)||0;$('#pricePreview').textContent=v?`주인장 ${won(v)} (수수료 없음) / 직원 지급 ${won(Math.max(0,v-50))} / 직원 보고 ${won(Math.round(v*1.1))}`:''}
 function switchTab(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$$('.panel').forEach(x=>x.classList.toggle('active',x.id===id));window.scrollTo({top:0,behavior:'smooth'})}
 
-function groupPrintEntries(entries, role){
+function groupPrintEntries(entries, role, fullRate=false){
   const map=new Map();
   for(const x of entries){
-    const unit=role==='owner'?Number(x.ownerPrice||0):Number(x.workerPrice||0);
+    const unit=role==='owner'||fullRate?Number(x.ownerPrice||0):Number(x.workerPrice||0);
     const k=[x.date,x.productId,unit].join('|');
     if(!map.has(k))map.set(k,{date:x.date,productName:x.productName,qty:0,unit,total:0});
     const g=map.get(k);g.qty+=Number(x.qty)||0;g.total+=unit*(Number(x.qty)||0);
   }
   return [...map.values()].sort((a,b)=>a.date.localeCompare(b.date)||String(a.productName).localeCompare(String(b.productName),'ko'));
 }
-async function printMonthly(){
+async function printMonthly(fullRate=false){
   const month=$('#monthlyMonth').value;if(!month)return toast('인쇄할 월을 선택하세요.');
   try{
-    toast('인쇄자료 준비 중');
+    toast(fullRate?'원단가 인쇄자료 준비 중':'직원단가 인쇄자료 준비 중');
     const data=await api('monthlySummary',{month,workerId:''});
     const workers=state.workers.filter(w=>w.active!==false).sort((a,b)=>(a.role==='owner'?-1:b.role==='owner'?1:String(a.name).localeCompare(String(b.name),'ko')));
     const summaryMap=Object.fromEntries((data.byWorker||[]).map(x=>[String(x.workerId),x]));
@@ -122,18 +122,28 @@ async function printMonthly(){
     for(const w of workers){
       const entries=(data.entries||[]).filter(x=>String(x.workerId)===String(w.id));
       const sum=summaryMap[String(w.id)]||{qty:0,ownerTotal:0,workerPayout:0,reportTotal:0};
-      const receive=w.role==='owner'?Number(sum.ownerTotal||0):Number(sum.workerPayout||0);
-      const grouped=groupPrintEntries(entries,w.role);
-      pages+=`<section class="print-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 작업 정산</h1><p>${esc(w.name)} · ${w.role==='owner'?'주인장':'직원'}</p></div><div class="print-badge">개인 정산</div></div><div class="print-metrics print-metrics-simple"><div><span>총 작업수량</span><b>${num(sum.qty)}개</b></div><div><span>월 합계</span><b>${won(receive)}</b></div></div><table class="print-table"><thead><tr><th>날짜</th><th>품목</th><th>수량</th><th>${w.role==='owner'?'적용단가':'직원단가'}</th><th>금액</th></tr></thead><tbody>${grouped.length?grouped.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.productName)}</td><td>${num(x.qty)}개</td><td>${won(x.unit)}</td><td>${won(x.total)}</td></tr>`).join(''):'<tr><td colspan="5" class="print-empty">이 달의 작업내역이 없습니다.</td></tr>'}</tbody><tfoot><tr><td colspan="2">합계</td><td>${num(sum.qty)}개</td><td></td><td>${won(receive)}</td></tr></tfoot></table>${w.role==='owner'?'':'<div class="print-note">※ 직원 정산표는 현재 품목DB 단가에서 50원을 뺀 직원단가만 적용합니다.</div>'}</section>`;
+      const grouped=groupPrintEntries(entries,w.role,fullRate);
+      const receive=grouped.reduce((s,x)=>s+Number(x.total||0),0);
+      const rateLabel=w.role==='owner'?'적용단가':(fullRate?'원단가':'직원단가');
+      const badgeLabel=fullRate?'원단가 정산':'개인 정산';
+      const note=w.role==='owner'?'':(fullRate?'<div class="print-note">※ 차감 없이 현재 품목DB의 주인장 단가를 그대로 적용한 인쇄본입니다.</div>':'<div class="print-note">※ 직원 정산표는 현재 품목DB 단가에서 50원을 뺀 직원단가만 적용합니다.</div>');
+      pages+=`<section class="print-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 작업 정산</h1><p>${esc(w.name)} · ${w.role==='owner'?'주인장':'직원'}${w.role==='owner'?'':(fullRate?' · 차감 없음':' · 직원단가')}</p></div><div class="print-badge">${badgeLabel}</div></div><div class="print-metrics print-metrics-simple"><div><span>총 작업수량</span><b>${num(sum.qty)}개</b></div><div><span>월 합계</span><b>${won(receive)}</b></div></div><table class="print-table"><thead><tr><th>날짜</th><th>품목</th><th>수량</th><th>${rateLabel}</th><th>금액</th></tr></thead><tbody>${grouped.length?grouped.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.productName)}</td><td>${num(x.qty)}개</td><td>${won(x.unit)}</td><td>${won(x.total)}</td></tr>`).join(''):'<tr><td colspan="5" class="print-empty">이 달의 작업내역이 없습니다.</td></tr>'}</tbody><tfoot><tr><td colspan="2">합계</td><td>${num(sum.qty)}개</td><td></td><td>${won(receive)}</td></tr></tfoot></table>${note}</section>`;
     }
 
-    // 마지막 전체 총계: 주인장 직접 작업금액 + 직원 작업의 보고금액(현재 주인장단가×1.1)만 계산한다.
-    const ownerSum=(data.byWorker||[]).filter(x=>x.role==='owner').reduce((s,x)=>s+Number(x.ownerTotal||0),0);
-    const ownerQty=(data.byWorker||[]).filter(x=>x.role==='owner').reduce((s,x)=>s+Number(x.qty||0),0);
-    const staffReport=(data.byWorker||[]).filter(x=>x.role!=='owner').reduce((s,x)=>s+Number(x.reportTotal||0),0);
-    const staffQty=(data.byWorker||[]).filter(x=>x.role!=='owner').reduce((s,x)=>s+Number(x.qty||0),0);
+    // 마지막 전체 총계: 주인장 + 직원별 수수료 포함 금액을 각각 표시한다.
+    const ownerRows=(data.byWorker||[]).filter(x=>x.role==='owner');
+    const staffRows=(data.byWorker||[]).filter(x=>x.role!=='owner').sort((a,b)=>String(a.workerName).localeCompare(String(b.workerName),'ko'));
+    const ownerSum=ownerRows.reduce((s,x)=>s+Number(x.ownerTotal||0),0);
+    const ownerQty=ownerRows.reduce((s,x)=>s+Number(x.qty||0),0);
+    const staffReport=staffRows.reduce((s,x)=>s+Number(x.reportTotal||0),0);
+    const staffQty=staffRows.reduce((s,x)=>s+Number(x.qty||0),0);
     const grand=ownerSum+staffReport;
-    pages+=`<section class="print-page print-total-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 전체 총계</h1><p>최종 보고용 정산</p></div><div class="print-badge total">전체 총계</div></div><div class="print-metrics print-final-metrics"><div><span>1. 주인장 총금액</span><b>${won(ownerSum)}</b><small>주인장 작업 ${num(ownerQty)}개 · 수수료 없음</small></div><div><span>2. 직원들 총금액</span><b>${won(staffReport)}</b><small>직원 작업 ${num(staffQty)}개 · 현재 주인장단가 × 1.1</small></div><div class="grand"><span>3. 전체 최종 합계</span><b>${won(grand)}</b><small>주인장 총금액 + 직원들 수수료 포함 총금액</small></div></div><table class="print-table print-final-table"><thead><tr><th>구분</th><th>수량</th><th>계산 기준</th><th>금액</th></tr></thead><tbody><tr><td>주인장</td><td>${num(ownerQty)}개</td><td>현재 주인장단가 · 수수료 없음</td><td>${won(ownerSum)}</td></tr><tr><td>직원 전체</td><td>${num(staffQty)}개</td><td>현재 주인장단가 × 1.1</td><td>${won(staffReport)}</td></tr></tbody><tfoot><tr><td>최종 합계</td><td>${num(ownerQty+staffQty)}개</td><td>전체</td><td>${won(grand)}</td></tr></tfoot></table></section>`;
+    const ownerName=ownerRows[0]?.workerName||state.workers.find(w=>w.role==='owner')?.name||'주인장';
+    const detailRows=[
+      `<tr><td>${esc(ownerName)} <small>(주인장)</small></td><td>${num(ownerQty)}개</td><td>현재 주인장단가 · 수수료 없음</td><td>${won(ownerSum)}</td></tr>`,
+      ...staffRows.map(x=>`<tr><td>${esc(x.workerName)}</td><td>${num(x.qty)}개</td><td>현재 주인장단가 × 1.1</td><td>${won(x.reportTotal)}</td></tr>`)
+    ].join('');
+    pages+=`<section class="print-page print-total-page"><div class="print-title"><div><h1>${esc(month.replace('-','년 '))}월 전체 총계</h1><p>최종 보고용 정산 · 직원별 합계 포함</p></div><div class="print-badge total">전체 총계</div></div><div class="print-metrics print-final-metrics"><div><span>1. 주인장 총금액</span><b>${won(ownerSum)}</b><small>주인장 작업 ${num(ownerQty)}개 · 수수료 없음</small></div><div><span>2. 직원들 총금액</span><b>${won(staffReport)}</b><small>직원 작업 ${num(staffQty)}개 · 현재 주인장단가 × 1.1</small></div><div class="grand"><span>3. 전체 최종 합계</span><b>${won(grand)}</b><small>주인장 총금액 + 직원별 수수료 포함 총금액</small></div></div><table class="print-table print-final-table"><thead><tr><th>작업자</th><th>수량</th><th>계산 기준</th><th>금액</th></tr></thead><tbody>${detailRows}</tbody><tfoot><tr><td>직원 합계</td><td>${num(staffQty)}개</td><td>직원 전체</td><td>${won(staffReport)}</td></tr><tr><td>최종 합계</td><td>${num(ownerQty+staffQty)}개</td><td>주인장 + 직원 전체</td><td>${won(grand)}</td></tr></tfoot></table></section>`;
     $('#printArea').innerHTML=pages;document.body.classList.add('printing');setTimeout(()=>window.print(),100);
   }catch(e){toast(e.message)}
 }
@@ -157,7 +167,7 @@ function bind(){
   $('#saveEntries').onclick=async()=>{if(!state.draft.length)return toast('저장할 작업이 없습니다.');try{await api('addEntries',{entries:state.draft});const count=state.draft.length;state.draft=[];renderDraft();toast(`${count}건 저장 완료`)}catch(e){toast(e.message)}};
   $('#clearDraft').onclick=()=>{if(state.draft.length&&confirm('입력 중인 내용을 모두 비울까요?')){state.draft=[];renderDraft()}};
   $('#workDate').onchange=loadWorkDayStatus;$('#workDelivery').onchange=saveWorkDayStatus;$('#workVisit').onchange=saveWorkDayStatus;$('#dailyDate').onchange=loadDaily;$('#dailyDelivery').onchange=saveDailyViewStatus;$('#dailyVisit').onchange=saveDailyViewStatus;
-  $('#loadDaily').onclick=loadDaily;$('#loadMonthly').onclick=loadMonthly;$('#monthlyWorker').onchange=loadMonthly;$('#dailyWorker').onchange=loadDaily;$('#printMonthly').onclick=printMonthly;
+  $('#loadDaily').onclick=loadDaily;$('#loadMonthly').onclick=loadMonthly;$('#monthlyWorker').onchange=loadMonthly;$('#dailyWorker').onchange=loadDaily;$('#printMonthly').onclick=()=>printMonthly(false);$('#printMonthlyFull').onclick=()=>printMonthly(true);
   $('#newProduct').onclick=()=>openProduct(null);$('#closeProductModal').onclick=()=>$('#productModal').classList.remove('open');$('#closeEntryModal').onclick=()=>$('#entryModal').classList.remove('open');$('#saveEntryEdit').onclick=saveEntryEdit;
   $('#saveProduct').onclick=async()=>{const id=$('#productId').value,name=$('#productName').value.trim(),ownerPrice=Number($('#ownerPrice').value);if(!name||ownerPrice<0)return toast('품목명과 기준단가를 확인하세요.');try{await api(id?'updateProduct':'addProduct',{id,name,ownerPrice});$('#productModal').classList.remove('open');await refreshAll();toast('품목 저장 완료')}catch(e){toast(e.message)}};
   $('#addWorker').onclick=async()=>{const name=$('#newWorkerName').value.trim();if(!name)return toast('작업자 이름을 입력하세요.');try{await api('addWorker',{name});$('#newWorkerName').value='';await refreshAll();toast('작업자 추가 완료')}catch(e){toast(e.message)}};
