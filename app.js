@@ -27,14 +27,14 @@ function renderWorkerSelects(){
   if(current&&state.workers.some(w=>String(w.id)===String(current)))$('#workerSelect').value=current;if(m&&state.workers.some(w=>String(w.id)===String(m)))$('#monthlyWorker').value=m;if(d&&state.workers.some(w=>String(w.id)===String(d)))$('#dailyWorker').value=d;
 }
 function filteredProducts(q){q=(q||'').trim().toLowerCase();return state.products.filter(p=>p.active!==false&&(!q||String(p.name).toLowerCase().includes(q)))}
-function renderProductButtons(){const items=filteredProducts($('#productSearch').value);$('#productButtons').innerHTML=items.length?items.map(p=>{const c=calcPrices(p);return `<button class="product-btn" data-add-product="${esc(p.id)}"><strong>${esc(p.name)}</strong><small>기준 ${won(c.owner)} · 직원 ${won(c.worker)} · 보고 ${won(c.report)}</small></button>`}).join(''):'<div class="empty">검색 결과가 없습니다.</div>'}
+function renderProductButtons(){const items=filteredProducts($('#productSearch').value);$('#productButtons').innerHTML=items.length?items.map(p=>{const c=calcPrices(p);return `<button class="product-btn" data-add-product="${esc(p.id)}">${productPhoto(p,false)}<strong>${esc(p.name)}</strong><small>기준 ${won(c.owner)} · 직원 ${won(c.worker)} · 보고 ${won(c.report)}</small></button>`}).join(''):'<div class="empty">검색 결과가 없습니다.</div>'}
 function addDraft(productId){const workerId=$('#workerSelect').value,date=$('#workDate').value;if(!workerId||!date)return toast('날짜와 작업자를 선택하세요.');const existing=state.draft.find(x=>x.productId===productId&&x.workerId===workerId&&x.date===date);if(existing)existing.qty++;else state.draft.push({productId,workerId,date,qty:1});renderDraft()}
 function draftTotals(){let owner=0,worker=0,report=0;for(const d of state.draft){const p=state.products.find(x=>x.id===d.productId),w=state.workers.find(x=>x.id===d.workerId);if(!p||!w)continue;const c=calcPrices(p),q=Number(d.qty)||0,isOwner=w.role==='owner';owner+=c.owner*q;if(isOwner)report+=c.owner*q;else{worker+=c.worker*q;report+=c.report*q}}return{owner,worker,report}}
 function renderDraft(){
-  $('#draftEntries').innerHTML=state.draft.length?state.draft.map((d,i)=>{const p=state.products.find(x=>x.id===d.productId),w=state.workers.find(x=>x.id===d.workerId),c=p?calcPrices(p):{owner:0,worker:0},unit=w?.role==='owner'?c.owner:c.worker;return `<div class="entry"><div><strong>${esc(p?.name||'삭제된 품목')}</strong><div class="meta">${esc(d.date)}</div></div><div class="worker"><span class="pill">${esc(w?.name||'작업자')}</span></div><div class="qty-control"><button data-qty="${i}" data-delta="-1">−</button><input data-qty-input="${i}" type="number" min="1" value="${Number(d.qty)||1}"><button data-qty="${i}" data-delta="1">+</button></div><div class="remove"><button class="btn danger small" data-remove="${i}">삭제</button><div class="meta amount">${won(unit*(Number(d.qty)||0))}</div></div></div>`}).join(''):'<div class="empty">품목 버튼을 눌러 작업수량을 추가하세요.</div>';
+  $('#draftEntries').innerHTML=state.draft.length?state.draft.map((d,i)=>{const p=state.products.find(x=>x.id===d.productId),w=state.workers.find(x=>x.id===d.workerId),c=p?calcPrices(p):{owner:0,worker:0},unit=w?.role==='owner'?c.owner:c.worker;return `<div class="entry"><div>${productPhoto(p)}<strong>${esc(p?.name||'삭제된 품목')}</strong><div class="meta">${esc(d.date)}</div></div><div class="worker"><span class="pill">${esc(w?.name||'작업자')}</span></div><div class="qty-control"><button data-qty="${i}" data-delta="-1">−</button><input data-qty-input="${i}" type="number" min="1" value="${Number(d.qty)||1}"><button data-qty="${i}" data-delta="1">+</button></div><div class="remove"><button class="btn danger small" data-remove="${i}">삭제</button><div class="meta amount">${won(unit*(Number(d.qty)||0))}</div></div></div>`}).join(''):'<div class="empty">품목 버튼을 눌러 작업수량을 추가하세요.</div>';
   const t=draftTotals();$('#draftOwnerTotal').textContent=won(t.owner);$('#draftWorkerTotal').textContent=won(t.worker);$('#draftReportTotal').textContent=won(t.report);
 }
-function renderProductList(){const items=filteredProducts($('#dbSearch').value||'');$('#productList').innerHTML=items.length?items.map(p=>{const c=calcPrices(p);return `<div class="entry"><div><strong>${esc(p.name)}</strong><div class="meta">기준 ${won(c.owner)} · 직원 ${won(c.worker)} · 보고 ${won(c.report)}</div></div><div></div><div></div><div><button class="btn soft small" data-edit-product="${esc(p.id)}">수정</button> <button class="btn danger small" data-delete-product="${esc(p.id)}">삭제</button></div></div>`}).join(''):'<div class="empty">등록된 품목이 없습니다.</div>'}
+function renderProductList(){const items=filteredProducts($('#dbSearch').value||'');$('#productList').innerHTML=items.length?items.map(p=>{const c=calcPrices(p);return `<div class="entry"><div>${productPhoto(p)}<strong>${esc(p.name)}</strong><div class="meta">기준 ${won(c.owner)} · 직원 ${won(c.worker)} · 보고 ${won(c.report)}</div></div><div></div><div></div><div><button class="btn soft small" data-edit-product="${esc(p.id)}">수정</button> <button class="btn danger small" data-delete-product="${esc(p.id)}">삭제</button></div></div>`}).join(''):'<div class="empty">등록된 품목이 없습니다.</div>'}
 function renderWorkerList(){const items=state.workers.filter(w=>w.active!==false);$('#workerList').innerHTML=items.map(w=>`<div class="entry"><div><strong>${esc(w.name)}</strong><div class="meta">${w.role==='owner'?'주인장 · 이름 변경 가능 · 삭제 불가':'직원 · 기준단가 - 50원 지급 · 보고 기준단가 +10%'}</div></div><div></div><div></div><div class="row-actions"><button class="btn soft small" data-edit-worker="${esc(w.id)}">이름수정</button>${w.role==='owner'?'':`<button class="btn danger small" data-delete-worker="${esc(w.id)}">삭제</button>`}</div></div>`).join('')}
 
 async function loadWorkDayStatus(){
@@ -58,8 +58,8 @@ async function loadDaily(){
     const date=$('#dailyDate').value,workerId=$('#dailyWorker').value,d=await api('dailySummary',{date,workerId});state.dailyData=d;$('#dailyDelivery').checked=!!d.status?.delivery;$('#dailyVisit').checked=!!d.status?.visit;
     $('#dailyOwnerTotal').textContent=won(d.totals.ownerTotal);$('#dailyWorkerTotal').textContent=won(d.totals.workerPayoutTotal);$('#dailyReportTotal').textContent=won(d.totals.reportTotal);
     $('#workerSummary').innerHTML=table(['작업자','구분','수량','기준','직원지급','보고'],d.byWorker.map(x=>[esc(x.workerName),x.role==='owner'?'주인장':'직원',num(x.qty),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]),'worker-summary');
-    $('#productSummary').innerHTML=table(['품목','수량','기준단가','직원단가','보고단가','기준금액','직원지급','보고'],d.byProduct.map(x=>[esc(x.productName),num(x.qty),won(x.ownerPrice),won(x.workerPrice),won(x.reportPrice),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]),'product-summary');
-    $('#dailyDetails').innerHTML=table(['시간','작업자','품목','수량','지급단가','지급금액','보고','관리'],d.entries.map(x=>[esc(x.createdAtLabel),esc(x.workerName),esc(x.productName),num(x.qty),won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal),entryActions(x.id,'daily')]),'daily-detail');toast(`${date} 조회 완료`);
+    $('#productSummary').innerHTML=table(['품목','수량','기준단가','직원단가','보고단가','기준금액','직원지급','보고'],d.byProduct.map(x=>[productLabel(x),num(x.qty),won(x.ownerPrice),won(x.workerPrice),won(x.reportPrice),won(x.ownerTotal),won(x.workerPayout),won(x.reportTotal)]),'product-summary');
+    $('#dailyDetails').innerHTML=table(['시간','작업자','품목','수량','지급단가','지급금액','보고','관리'],d.entries.map(x=>[esc(x.createdAtLabel),esc(x.workerName),productLabel(x),num(x.qty),won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal),entryActions(x.id,'daily')]),'daily-detail');toast(`${date} 조회 완료`);
   }catch(e){toast(e.message)}
 }
 async function loadMonthly(){
@@ -68,7 +68,7 @@ async function loadMonthly(){
     $('#monthlyQty').textContent=`${num(d.totals.qty)}개`;$('#monthlyOwnerTotal').textContent=won(d.totals.ownerTotal);$('#monthlyWorkerTotal').textContent=won(d.totals.workerPayoutTotal);$('#monthlyReportTotal').textContent=won(d.totals.reportTotal);
     renderCalendar(month,d.byDate||[],d.statuses||{});renderMonthlyPeople(d.byWorker||[],workerId);
     $('#monthlyByDate').innerHTML=table(['날짜','수량','기준금액','직원지급','보고'],(d.byDate||[]).map(x=>[esc(x.date),`${num(x.qty)}개`,won(x.ownerTotal),won(x.workerPayoutTotal),won(x.reportTotal)]),'monthly-date');
-    $('#monthlyDetails').innerHTML=table(['날짜','작업자','품목','수량','지급단가','지급금액','보고','관리'],(d.entries||[]).map(x=>[esc(x.date),esc(x.workerName),esc(x.productName),num(x.qty),won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal),entryActions(x.id,'monthly')]),'monthly-detail');
+    $('#monthlyDetails').innerHTML=table(['날짜','작업자','품목','수량','지급단가','지급금액','보고','관리'],(d.entries||[]).map(x=>[esc(x.date),esc(x.workerName),productLabel(x),num(x.qty),won(x.payoutUnit),won(x.payoutTotal),won(x.reportTotal),entryActions(x.id,'monthly')]),'monthly-detail');
     const selected=state.workers.find(w=>String(w.id)===String(workerId));$('#calendarTitle').textContent=`${month.replace('-','년 ')}월 ${selected?`· ${selected.name}`:'· 전체'}`;toast(`${month} 조회 완료`);
   }catch(e){toast(e.message)}
 }
@@ -87,14 +87,15 @@ function table(headers,rows,cls=''){if(!rows.length)return '<div class="empty">�
 function openEntryEdit(id,context){
   const source=context==='daily'?state.dailyData:state.monthlyData,entry=source?.entries?.find(x=>String(x.id)===String(id));if(!entry)return toast('수정할 내역을 찾을 수 없습니다. 다시 조회해주세요.');
   $('#entryId').value=entry.id;$('#entryContext').value=context;$('#entryWorkerName').value=entry.workerName;$('#entryDate').value=entry.date;$('#entryQty').value=entry.qty;
-  const active=state.products.filter(p=>p.active!==false);let options=active.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');if(!active.some(p=>String(p.id)===String(entry.productId)))options=`<option value="${esc(entry.productId)}">${esc(entry.productName)} (기존)</option>`+options;$('#entryProduct').innerHTML=options;$('#entryProduct').value=entry.productId;$('#entryModal').classList.add('open');
+  const active=state.products.filter(p=>p.active!==false);let options=active.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');if(!active.some(p=>String(p.id)===String(entry.productId)))options=`<option value="${esc(entry.productId)}">${esc(entry.productName)} (기존)</option>`+options;$('#entryProduct').innerHTML=options;$('#entryProduct').value=entry.productId;renderEntryPhoto();$('#entryModal').classList.add('open');
 }
 async function saveEntryEdit(){
   const id=$('#entryId').value,date=$('#entryDate').value,productId=$('#entryProduct').value,qty=Math.floor(Number($('#entryQty').value)),context=$('#entryContext').value;if(!date||!productId||!qty||qty<1)return toast('날짜·품목·수량을 확인하세요.');
   try{await api('updateEntry',{id,date,productId,qty});$('#entryModal').classList.remove('open');toast('작업내역 수정 완료');if(context==='daily')await loadDaily();else await loadMonthly()}catch(e){toast(e.message)}
 }
 
-function openProduct(p){$('#productId').value=p?.id||'';$('#productName').value=p?.name||'';$('#ownerPrice').value=p?.ownerPrice||'';$('#productModalTitle').textContent=p?'품목 수정':'품목 추가';updatePricePreview();$('#productModal').classList.add('open')}
+let productImageData='',photoRevision=0;
+function openProduct(p){photoRevision++;productImageData=p?.imageData||'';$('#productPhoto').value='';$('#saveProduct').disabled=false;$('#productId').value=p?.id||'';$('#productName').value=p?.name||'';$('#ownerPrice').value=p?.ownerPrice||'';$('#productModalTitle').textContent=p?'품목 수정':'품목 추가';updatePricePreview();renderPhotoPreview();$('#productModal').classList.add('open')}
 function updatePricePreview(){const v=Number($('#ownerPrice').value)||0;$('#pricePreview').textContent=v?`주인장 ${won(v)} (수수료 없음) / 직원 지급 ${won(Math.max(0,v-50))} / 직원 보고 ${won(Math.round(v*1.1))}`:''}
 function switchTab(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$$('.panel').forEach(x=>x.classList.toggle('active',x.id===id));window.scrollTo({top:0,behavior:'smooth'})}
 
@@ -149,8 +150,14 @@ async function printMonthly(fullRate=false){
 }
 
 function bind(){
+  $('#productPhoto').onchange=selectProductPhoto;
+  $('#removeProductPhoto').onclick=()=>{photoRevision++;productImageData='';$('#productPhoto').value='';renderPhotoPreview()};
+  $('#entryProduct').onchange=renderEntryPhoto;
+  $('#closePhotoViewer').onclick=()=>$('#photoViewer').close();
+
   $$('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));$('#productSearch').oninput=renderProductButtons;$('#dbSearch').oninput=renderProductList;$('#ownerPrice').oninput=updatePricePreview;
   document.addEventListener('click',async e=>{
+    const photo=e.target.closest('[data-photo]');if(photo){const img=photo.tagName==='IMG'?photo:photo.querySelector('img');$('#largeProductPhoto').src=img.src;$('#largeProductPhoto').alt=img.alt;$('#photoViewer').showModal();return}
     const a=e.target.closest('[data-add-product]');if(a)return addDraft(a.dataset.addProduct);
     const q=e.target.closest('[data-qty]');if(q){const i=Number(q.dataset.qty);state.draft[i].qty=Math.max(1,(Number(state.draft[i].qty)||1)+Number(q.dataset.delta));return renderDraft()}
     const r=e.target.closest('[data-remove]');if(r){state.draft.splice(Number(r.dataset.remove),1);return renderDraft()}
@@ -169,7 +176,7 @@ function bind(){
   $('#workDate').onchange=loadWorkDayStatus;$('#workDelivery').onchange=saveWorkDayStatus;$('#workVisit').onchange=saveWorkDayStatus;$('#dailyDate').onchange=loadDaily;$('#dailyDelivery').onchange=saveDailyViewStatus;$('#dailyVisit').onchange=saveDailyViewStatus;
   $('#loadDaily').onclick=loadDaily;$('#loadMonthly').onclick=loadMonthly;$('#monthlyWorker').onchange=loadMonthly;$('#dailyWorker').onchange=loadDaily;$('#printMonthly').onclick=()=>printMonthly(false);$('#printMonthlyFull').onclick=()=>printMonthly(true);
   $('#newProduct').onclick=()=>openProduct(null);$('#closeProductModal').onclick=()=>$('#productModal').classList.remove('open');$('#closeEntryModal').onclick=()=>$('#entryModal').classList.remove('open');$('#saveEntryEdit').onclick=saveEntryEdit;
-  $('#saveProduct').onclick=async()=>{const id=$('#productId').value,name=$('#productName').value.trim(),ownerPrice=Number($('#ownerPrice').value);if(!name||ownerPrice<0)return toast('품목명과 기준단가를 확인하세요.');try{await api(id?'updateProduct':'addProduct',{id,name,ownerPrice});$('#productModal').classList.remove('open');await refreshAll();toast('품목 저장 완료')}catch(e){toast(e.message)}};
+  $('#saveProduct').onclick=async()=>{const id=$('#productId').value,name=$('#productName').value.trim(),ownerPrice=Number($('#ownerPrice').value);if(!name||ownerPrice<0)return toast('품목명과 기준단가를 확인하세요.');try{await api(id?'updateProduct':'addProduct',{id,name,ownerPrice,imageData:productImageData});$('#productModal').classList.remove('open');await refreshAll();toast('품목 저장 완료')}catch(e){toast(e.message)}};
   $('#addWorker').onclick=async()=>{const name=$('#newWorkerName').value.trim();if(!name)return toast('작업자 이름을 입력하세요.');try{await api('addWorker',{name});$('#newWorkerName').value='';await refreshAll();toast('작업자 추가 완료')}catch(e){toast(e.message)}};
   $('#backupNow').onclick=async()=>{try{const d=await api('backupNow');toast(`백업 완료: ${d.fileName}`)}catch(e){toast(e.message)}};
   $('#saveAccessKey').onclick=async()=>{const key=$('#accessKey').value.trim();if(!key)return toast('접속키를 입력하세요.');state.accessKey=key;localStorage.setItem('sidejobAccessKey',key);$('#authModal').classList.remove('open');await refreshAll()};
@@ -178,4 +185,25 @@ function bind(){
 function num(v){return Math.round(Number(v)||0).toLocaleString('ko-KR')}
 function esc(v){return String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();state.installPrompt=e;$('#installApp').hidden=false});window.addEventListener('appinstalled',()=>{$('#installApp').hidden=true;state.installPrompt=null;toast('앱 설치 완료')});window.addEventListener('afterprint',()=>{document.body.classList.remove('printing');$('#printArea').innerHTML=''});
-if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&!window.navigator.standalone)$('#installApp').hidden=false;if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));init();
+if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&!window.navigator.standalone)$('#installApp').hidden=false;if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+
+function safePhoto(value){return typeof value==='string'&&value.length<=45000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value)?value:''}
+function productPhoto(p,zoom=true){const src=safePhoto(p?.imageData);return src?`<img class="product-photo" src="${src}" alt="${esc(p?.name||'품목')} 사진" ${zoom?'data-photo tabindex="0" role="button" aria-label="사진 크게 보기"':''} loading="lazy">`:''}
+function productLabel(x){const p=state.products.find(p=>String(p.id)===String(x.productId));return productPhoto({name:x.productName,imageData:x.imageData||p?.imageData})+esc(x.productName)}
+function renderPhotoPreview(){$('#productPhotoPreview').innerHTML=productPhoto({name:$('#productName').value,imageData:productImageData});$('#removeProductPhoto').hidden=!productImageData}
+function renderEntryPhoto(){$('#entryPhotoPreview').innerHTML=productPhoto(state.products.find(p=>String(p.id)===$('#entryProduct').value))}
+async function selectProductPhoto(){
+  const file=$('#productPhoto').files[0],revision=++photoRevision;if(!file)return;
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type)||file.size>20*1024*1024){$('#productPhoto').value='';return toast('20MB 이하 JPG, PNG, WebP 사진을 선택하세요.')}
+  $('#saveProduct').disabled=true;
+  try{
+    const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');let result='';
+    for(const size of [640,480,320,240,160]){const scale=Math.min(1,size/Math.max(bitmap.width,bitmap.height));canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);result=canvas.toDataURL('image/jpeg',0.75);if(result.length<=45000)break}
+    bitmap.close();if(!safePhoto(result))throw new Error('사진을 줄일 수 없습니다. 다른 사진을 선택하세요.');
+    if(revision===photoRevision){productImageData=result;renderPhotoPreview()}
+  }catch(e){toast(e.message||'사진을 읽을 수 없습니다.')}
+  finally{$('#saveProduct').disabled=false}
+}
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-photo]')){e.preventDefault();e.target.click()}});
+
+init();

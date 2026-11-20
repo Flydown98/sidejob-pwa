@@ -16,7 +16,7 @@ function setupSystem(){
   }else{
     ss=SpreadsheetApp.openById(ssId);
   }
-  ensureSheet_(ss,SHEETS.PRODUCTS,['id','name','ownerPrice','active','createdAt','updatedAt']);
+  ensureSheet_(ss,SHEETS.PRODUCTS,['id','name','ownerPrice','active','createdAt','updatedAt','imageData']);
   ensureSheet_(ss,SHEETS.WORKERS,['id','name','role','active','createdAt','updatedAt']);
   ensureSheet_(ss,SHEETS.ENTRIES,['id','date','workerId','productId','qty','ownerPriceSnapshot','workerPriceSnapshot','reportPriceSnapshot','createdAt','active','deletedAt']);
   ensureSheet_(ss,SHEETS.SETTINGS,['key','value','updatedAt']);
@@ -25,7 +25,7 @@ function setupSystem(){
     appendObject_(ss.getSheetByName(SHEETS.WORKERS),['id','name','role','active','createdAt','updatedAt'],{id:'owner-a',name:'A',role:'owner',active:true,createdAt:new Date(),updatedAt:new Date()});
   }
   if(readObjects_(SHEETS.PRODUCTS).length===0){
-    appendObject_(ss.getSheetByName(SHEETS.PRODUCTS),['id','name','ownerPrice','active','createdAt','updatedAt'],{id:Utilities.getUuid(),name:'블루메모리',ownerPrice:200,active:true,createdAt:new Date(),updatedAt:new Date()});
+    appendObject_(ss.getSheetByName(SHEETS.PRODUCTS),['id','name','ownerPrice','active','createdAt','updatedAt','imageData'],{id:Utilities.getUuid(),name:'블루메모리',ownerPrice:200,active:true,createdAt:new Date(),updatedAt:new Date()});
   }
   if(!folderId){const f=DriveApp.createFolder('부업_작업정산_자동백업');folderId=f.getId();props.setProperty('BACKUP_FOLDER_ID',folderId)}
   if(!props.getProperty('ACCESS_KEY'))props.setProperty('ACCESS_KEY',makeAccessKey_());
@@ -49,8 +49,8 @@ function doPost(e){
 function route_(action,r){
   switch(action){
     case 'bootstrap': return bootstrap_();
-    case 'addProduct': return saveProduct_(null,r.name,r.ownerPrice);
-    case 'updateProduct': return saveProduct_(r.id,r.name,r.ownerPrice);
+    case 'addProduct': return saveProduct_(null,r.name,r.ownerPrice,r.imageData);
+    case 'updateProduct': return saveProduct_(r.id,r.name,r.ownerPrice,r.imageData);
     case 'deleteProduct': return softDelete_(SHEETS.PRODUCTS,r.id);
     case 'addWorker': return addWorker_(r.name);
     case 'deleteWorker': return deleteWorker_(r.id);
@@ -64,13 +64,15 @@ function route_(action,r){
 }
 
 function bootstrap_(){return {products:readObjects_(SHEETS.PRODUCTS).filter(x=>bool_(x.active)),workers:readObjects_(SHEETS.WORKERS).filter(x=>bool_(x.active))}}
-function saveProduct_(id,name,ownerPrice){
+function saveProduct_(id,name,ownerPrice,imageData){
+  if(imageData!==undefined&&(typeof imageData!=='string'||imageData.length>45000||(imageData&&!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(imageData))))throw new Error('사진 형식 또는 크기가 올바르지 않습니다. 사진을 다시 선택하세요.');
   name=String(name||'').trim();ownerPrice=Number(ownerPrice);
   if(!name)throw new Error('품목명이 필요합니다.');if(!Number.isFinite(ownerPrice)||ownerPrice<0)throw new Error('기준단가가 올바르지 않습니다.');
   const ss=db_(),sh=ss.getSheetByName(SHEETS.PRODUCTS),rows=readObjects_(SHEETS.PRODUCTS,true);const now=new Date();
+  const headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];if(!headers.includes('imageData'))sh.getRange(1,headers.length+1).setValue('imageData');
   const dup=rows.find(x=>bool_(x.active)&&String(x.name).trim().toLowerCase()===name.toLowerCase()&&x.id!==id);if(dup)throw new Error('같은 품목명이 이미 있습니다.');
-  if(id){const row=rows.find(x=>x.id===id);if(!row)throw new Error('품목을 찾을 수 없습니다.');updateRow_(sh,row._row,{name,ownerPrice,updatedAt:now});return {id};}
-  id=Utilities.getUuid();appendObject_(sh,['id','name','ownerPrice','active','createdAt','updatedAt'],{id,name,ownerPrice,active:true,createdAt:now,updatedAt:now});return {id};
+  if(id){const row=rows.find(x=>x.id===id);if(!row)throw new Error('품목을 찾을 수 없습니다.');updateRow_(sh,row._row,{name,ownerPrice,updatedAt:now,...(imageData===undefined?{}:{imageData})});return {id};}
+  id=Utilities.getUuid();appendObject_(sh,['id','name','ownerPrice','active','createdAt','updatedAt','imageData'],{id,name,ownerPrice,active:true,createdAt:now,updatedAt:now,imageData:imageData||''});return {id};
 }
 function addWorker_(name){name=String(name||'').trim();if(!name)throw new Error('작업자 이름이 필요합니다.');const rows=readObjects_(SHEETS.WORKERS,true);if(rows.some(x=>bool_(x.active)&&String(x.name).toLowerCase()===name.toLowerCase()))throw new Error('같은 작업자 이름이 이미 있습니다.');const id=Utilities.getUuid(),now=new Date();appendObject_(db_().getSheetByName(SHEETS.WORKERS),['id','name','role','active','createdAt','updatedAt'],{id,name,role:'worker',active:true,createdAt:now,updatedAt:now});return{id};}
 function deleteWorker_(id){if(id==='owner-a')throw new Error('주인장 A는 삭제할 수 없습니다.');return softDelete_(SHEETS.WORKERS,id)}
@@ -99,9 +101,9 @@ function dailySummary_(date,workerId){
     if(!bw[w.id])bw[w.id]={workerId:w.id,workerName:w.name,role:w.role,qty:0,ownerTotal:0,workerPayout:0,reportTotal:0};
     bw[w.id].qty+=q;bw[w.id].ownerTotal+=ownerAmt;bw[w.id].workerPayout+=workerAmt;bw[w.id].reportTotal+=reportAmt;
     const pk=e.productId+'|'+op+'|'+wp+'|'+rp;
-    if(!bp[pk])bp[pk]={productId:e.productId,productName:p.name,qty:0,ownerPrice:op,workerPrice:wp,reportPrice:rp,ownerTotal:0,workerPayout:0,reportTotal:0};
+    if(!bp[pk])bp[pk]={productId:e.productId,productName:p.name,imageData:p.imageData||'',qty:0,ownerPrice:op,workerPrice:wp,reportPrice:rp,ownerTotal:0,workerPayout:0,reportTotal:0};
     bp[pk].qty+=q;bp[pk].ownerTotal+=ownerAmt;bp[pk].workerPayout+=workerAmt;bp[pk].reportTotal+=reportAmt;
-    detail.push({id:e.id,createdAtLabel:formatDateTime_(e.createdAt),workerName:w.name,role:w.role,productName:p.name,qty:q,payoutUnit,payoutTotal,reportTotal:reportAmt});
+    detail.push({id:e.id,createdAtLabel:formatDateTime_(e.createdAt),workerName:w.name,role:w.role,productName:p.name,productId:e.productId,imageData:p.imageData||'',qty:q,payoutUnit,payoutTotal,reportTotal:reportAmt});
   }
   return{date,workerId:workerId||'',totals:{ownerTotal,workerPayoutTotal,reportTotal},byWorker:Object.values(bw),byProduct:Object.values(bp),entries:detail};
 }
@@ -120,7 +122,7 @@ function monthlySummary_(month,workerId){
     byDate[d].qty+=q;byDate[d].ownerTotal+=ownerAmt;byDate[d].workerPayoutTotal+=workerAmt;byDate[d].reportTotal+=reportAmt;
     if(!byWorker[w.id])byWorker[w.id]={workerId:w.id,workerName:w.name,role:w.role,qty:0,ownerTotal:0,workerPayout:0,reportTotal:0};
     byWorker[w.id].qty+=q;byWorker[w.id].ownerTotal+=ownerAmt;byWorker[w.id].workerPayout+=workerAmt;byWorker[w.id].reportTotal+=reportAmt;
-    detail.push({id:e.id,date:d,workerName:w.name,role:w.role,productName:p.name,qty:q,payoutUnit,payoutTotal,reportTotal:reportAmt});
+    detail.push({id:e.id,date:d,workerName:w.name,role:w.role,productName:p.name,productId:e.productId,imageData:p.imageData||'',qty:q,payoutUnit,payoutTotal,reportTotal:reportAmt});
   }
   return{month,workerId:workerId||'',totals:{qty,ownerTotal,workerPayoutTotal,reportTotal},byDate:Object.values(byDate).sort((a,b)=>a.date.localeCompare(b.date)),byWorker:Object.values(byWorker).sort((a,b)=>String(a.workerName).localeCompare(String(b.workerName),'ko')),entries:detail.sort((a,b)=>a.date.localeCompare(b.date))};
 }

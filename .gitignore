@@ -1,0 +1,7 @@
+# Google OAuth credentials must never be committed.
+.clasprc.json
+.clasprc.*.json
+client_secret*.json
+credentials.json
+_site/
+node_modules/
