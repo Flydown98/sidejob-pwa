@@ -38,6 +38,8 @@ https://github.com/Flydown98/sidejob-pwa/settings/secrets/actions
 - Variables → New repository variable: 이름 `APPS_SCRIPT_ID`, 값은 Apps Script 편집기 → 프로젝트 설정(톱니바퀴) → 스크립트 ID. `/macros/s/.../exec`의 배포 ID와 다릅니다.
 - Variables → New repository variable: 이름 `APPS_SCRIPT_DEPLOYMENT_ID`, 값은 현재 `config.js`의 API URL에서 `/s/` 다음부터 `/exec` 앞까지의 문자열입니다. Apps Script → 배포 → 배포 관리에서도 확인할 수 있습니다. 새 배포를 만들지 말고 기존 웹 앱 배포를 사용합니다.
 
+스크립트 ID와 배포 ID를 Variables 대신 Secrets에 같은 이름으로 등록한 경우도 지원합니다. 둘 다 있으면 Secrets 값을 사용합니다. 옮겨 등록할 필요는 없습니다.
+
 Google OAuth 정보가 유출되면 Google 계정의 연결된 앱 권한을 해제하고 다시 로그인하여 Secret을 교체합니다. 앱 로그인용 접속키는 이 배포 인증과 별개이며 여기에 넣지 않습니다.
 
 ## 4. GitHub Pages 연결
