@@ -1,0 +1,71 @@
+name: Deploy app
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app.js'
+      - 'app.css'
+      - 'index.html'
+      - 'config.js'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - 'icons/**'
+      - 'apps-script/**'
+      - 'scripts/deploy-apps-script.sh'
+      - '.github/workflows/deploy.yml'
+permissions:
+  contents: read
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+jobs:
+  backend:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check source syntax
+        run: |
+          node --check app.js
+          node --check sw.js
+          node --check config.js
+          node --check < apps-script/Code.gs
+      - name: Install Google clasp CLI
+        run: npm install --prefix "$RUNNER_TEMP/clasp-cli" @google/clasp@3.4.1 --no-audit --no-fund
+      - name: Update existing Apps Script deployment
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          APPS_SCRIPT_ID: ${{ vars.APPS_SCRIPT_ID }}
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_DEPLOYMENT_ID }}
+          CLASP_BIN: ${{ runner.temp }}/clasp-cli/node_modules/.bin/clasp
+        run: bash scripts/deploy-apps-script.sh
+  pages:
+    needs: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Stage only public frontend files
+        run: |
+          mkdir _site
+          cp index.html app.js app.css config.js sw.js manifest.webmanifest _site/
+          cp -R icons _site/icons
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Publish GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

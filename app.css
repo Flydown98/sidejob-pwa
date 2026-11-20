@@ -81,3 +81,5 @@
 .day-status-badges span{display:inline-flex;padding:2px 4px;border-radius:5px;background:#ede9fe;color:#6d28d9;font-size:9px;font-weight:900;line-height:1.2}
 .calendar-day.has-status{box-shadow:inset 0 0 0 1px #ddd6fe}
 @media(max-width:560px){.date-status-row{grid-template-columns:1fr auto auto}.check-chip{min-height:40px;padding:0 8px;font-size:12px}.toolbar .check-chip{flex:0 0 auto}.day-status-badges span{font-size:8px;padding:1px 3px}}
+
+.product-photo{display:block;width:72px;height:72px;object-fit:contain;background:#f3f4f6;border-radius:8px;margin:0 0 6px;cursor:zoom-in}.product-btn>.product-photo{width:100%;height:110px}.photo-field{margin-top:12px}.modal-box{max-height:90vh;overflow:auto}#productPhotoPreview .product-photo,#entryPhotoPreview .product-photo{width:130px;height:130px;margin-top:8px}#photoViewer{border:0;border-radius:16px;max-width:94vw;max-height:94vh;padding:12px}#photoViewer::backdrop{background:rgba(15,23,42,.7)}#largeProductPhoto{display:block;max-width:85vw;max-height:75vh;object-fit:contain;margin-top:10px}button:disabled{opacity:.5;cursor:wait}@media print{.product-photo,#photoViewer{display:none!important}}
